@@ -33,25 +33,6 @@ export default async function Home() {
   const logicalToday = getCurrentLogicalDate();
   const selectedDateKey = formatDateKey(logicalToday);
 
-  const logRecord = await prisma.dailyLog.findUnique({
-    where: { logicalDate: logicalToday },
-  });
-
-  const initialLog = logRecord
-    ? {
-        dateKey: selectedDateKey,
-        mood: logRecord.mood,
-        sleepQuality: logRecord.sleepQuality,
-        energyLevel: logRecord.energyLevel,
-        primaryActivities: Array.isArray(logRecord.primaryActivities)
-          ? (logRecord.primaryActivities as string[])
-          : [],
-        mentalWorldActivities: parseMentalWorld(logRecord.mentalWorldActivities),
-        dailyLifeActivities: parseDailyLife(logRecord.dailyLifeActivities),
-        notes: logRecord.notes,
-      }
-    : null;
-
   const startOfMonth = new Date(logicalToday);
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
@@ -66,10 +47,28 @@ export default async function Home() {
         lt: endOfMonth,
       },
     },
-    select: {
-      logicalDate: true,
-    },
+    orderBy: { logicalDate: 'asc' },
   });
+
+  const initialEntry = monthLogs.find((entry) => {
+    const key = formatDateKey(new Date(entry.logicalDate));
+    return key === selectedDateKey;
+  });
+
+  const initialLog = initialEntry
+    ? {
+        dateKey: selectedDateKey,
+        mood: initialEntry.mood,
+        sleepQuality: initialEntry.sleepQuality,
+        energyLevel: initialEntry.energyLevel,
+        primaryActivities: Array.isArray(initialEntry.primaryActivities)
+          ? (initialEntry.primaryActivities as string[])
+          : [],
+        mentalWorldActivities: parseMentalWorld(initialEntry.mentalWorldActivities),
+        dailyLifeActivities: parseDailyLife(initialEntry.dailyLifeActivities),
+        notes: initialEntry.notes,
+      }
+    : null;
 
   const initialLoggedDates = monthLogs.map((entry) =>
     formatDateKey(new Date(entry.logicalDate)),
