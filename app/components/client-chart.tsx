@@ -55,7 +55,7 @@ const useMediaQuery = (query: string) => {
 
 export function ClientChart({ data, locale }: ClientChartProps) {
   const isZh = locale === 'zh';
-  const isWide = useMediaQuery('(min-width: 890px)');
+  const isWide = useMediaQuery('(min-width: 600px)');
   const containerClass = isWide ? 'grid grid-cols-3 gap-4' : 'flex flex-col gap-4';
   const heading = isZh
     ? '情绪 / 睡眠 / 精力 分布'

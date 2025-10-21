@@ -114,6 +114,23 @@ type PrimaryActivityState = Record<string, boolean>;
 
 const SCALE_OPTIONS = ['1', '2', '3', '4', '5'] as const;
 
+type InitialLogSnapshot = {
+  dateKey: string;
+  mood: number;
+  sleepQuality: number;
+  energyLevel: number;
+  primaryActivities: string[];
+  mentalWorldActivities: Array<{ value: string; detail?: string }>;
+  dailyLifeActivities: string[];
+  notes?: string | null;
+};
+
+type LoggingTabProps = {
+  initialLog?: InitialLogSnapshot | null;
+  initialLoggedDates?: string[];
+  initialSelectedDate?: string;
+};
+
 const INITIAL_ACTION_STATE: UpsertDailyLogState = {
   status: 'idle',
 };
@@ -164,7 +181,7 @@ const buildDailyPayload = (state: DailyLifeState) =>
 const buildPrimaryPayload = (state: PrimaryActivityState) =>
   PRIMARY_ACTIVITY_OPTIONS.flatMap((option) => (state[option.value] ? [option.value] : []));
 
-const hydrateMentalState = (entries?: Array<{ value: string; detail: string }>) => {
+const hydrateMentalState = (entries?: Array<{ value: string; detail?: string }>) => {
   const next = createDefaultMentalState();
   if (!entries) {
     return next;
@@ -174,7 +191,7 @@ const hydrateMentalState = (entries?: Array<{ value: string; detail: string }>) 
     if (MENTAL_WORLD_VALUES.includes(entry.value as MentalWorldValue)) {
       next[entry.value as MentalWorldValue] = {
         selected: true,
-        detail: entry.detail,
+        detail: entry.detail ?? '',
       };
     }
   }
@@ -203,36 +220,64 @@ const hydratePrimaryState = (entries?: string[]) =>
 const cn = (...inputs: Array<string | undefined | null | false>) =>
   inputs.filter(Boolean).join(' ');
 
-export function LoggingTab() {
-  const logicalToday = React.useMemo(() => getCurrentLogicalDate(), []);
+export function LoggingTab({
+  initialLog = null,
+  initialLoggedDates = [],
+  initialSelectedDate,
+}: LoggingTabProps) {
   const [locale, setLocale] = useLocale();
   const t = TRANSLATIONS[locale];
   const isZh = locale === 'zh';
-  const [selectedDate, setSelectedDate] = React.useState<string>(() =>
-    formatDateKey(logicalToday),
-  );
-  const todayKey = React.useMemo(() => formatDateKey(logicalToday), [logicalToday]);
+
+  const todayKey = React.useMemo(() => formatDateKey(getCurrentLogicalDate()), []);
+  const baseSelectedDate = initialSelectedDate ?? todayKey;
+
+  const [selectedDate, setSelectedDate] = React.useState<string>(baseSelectedDate);
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() => {
-    const seed = new Date(logicalToday);
+    const seed = new Date(`${baseSelectedDate}T12:00:00`);
+    if (Number.isNaN(seed.getTime())) {
+      const fallback = getCurrentLogicalDate();
+      fallback.setDate(1);
+      fallback.setHours(0, 0, 0, 0);
+      return fallback;
+    }
     seed.setDate(1);
+    seed.setHours(0, 0, 0, 0);
     return seed;
   });
-  const [loggedDates, setLoggedDates] = React.useState<Set<string>>(() => new Set());
+  const [loggedDates, setLoggedDates] = React.useState<Set<string>>(() => {
+    const dates = new Set(initialLoggedDates);
+    if (initialLog) {
+      dates.add(initialLog.dateKey);
+    }
+    return dates;
+  });
 
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(!initialLog);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
-  const [formValues, setFormValues] = React.useState<FormValues>(createInitialFormValues);
-  const [mentalState, setMentalState] = React.useState<MentalWorldState>(
-    createDefaultMentalState,
+  const [formValues, setFormValues] = React.useState<FormValues>(() =>
+    initialLog
+      ? {
+          mood: initialLog.mood.toString(),
+          sleepQuality: initialLog.sleepQuality.toString(),
+          energyLevel: initialLog.energyLevel.toString(),
+          notes: initialLog.notes ?? '',
+        }
+      : createInitialFormValues(),
   );
-  const [dailyState, setDailyState] = React.useState<DailyLifeState>(
-    createDefaultDailyLifeState,
+  const [mentalState, setMentalState] = React.useState<MentalWorldState>(() =>
+    initialLog ? hydrateMentalState(initialLog.mentalWorldActivities) : createDefaultMentalState(),
   );
-  const [primaryState, setPrimaryState] = React.useState<PrimaryActivityState>(
-    createDefaultPrimaryState,
+  const [dailyState, setDailyState] = React.useState<DailyLifeState>(() =>
+    initialLog ? hydrateDailyLifeState(initialLog.dailyLifeActivities) : createDefaultDailyLifeState(),
   );
+  const [primaryState, setPrimaryState] = React.useState<PrimaryActivityState>(() =>
+    initialLog ? hydratePrimaryState(initialLog.primaryActivities) : createDefaultPrimaryState(),
+  );
+
+  const skipInitialFetchRef = React.useRef(Boolean(initialLog));
 
   const [actionState, formAction, isPending] = useActionState(
     upsertDailyLog,
@@ -276,12 +321,16 @@ export function LoggingTab() {
       }
 
       const data = (await response.json()) as { dates: string[] };
-      setLoggedDates(new Set(data.dates));
+      setLoggedDates(() => {
+        const next = new Set(data.dates);
+        next.add(selectedDate);
+        return next;
+      });
     } catch (error) {
       console.error(error);
       setLoggedDates(new Set());
     }
-  }, [monthKey]);
+  }, [monthKey, selectedDate]);
 
   const loadDailyLog = React.useCallback(
     async (dateKey: string) => {
@@ -305,7 +354,7 @@ export function LoggingTab() {
                 sleepQuality: number;
                 energyLevel: number;
                 primaryActivities: string[];
-                mentalWorldActivities: Array<{ value: string; detail: string }>;
+                mentalWorldActivities: Array<{ value: string; detail?: string }>;
                 dailyLifeActivities: string[];
                 notes?: string;
               }
@@ -351,8 +400,13 @@ export function LoggingTab() {
   );
 
   React.useEffect(() => {
+    if (skipInitialFetchRef.current && selectedDate === baseSelectedDate) {
+      skipInitialFetchRef.current = false;
+      setIsLoading(false);
+      return;
+    }
     loadDailyLog(selectedDate);
-  }, [loadDailyLog, selectedDate]);
+  }, [loadDailyLog, selectedDate, baseSelectedDate]);
 
   React.useEffect(() => {
     if (!actionState?.values) {
