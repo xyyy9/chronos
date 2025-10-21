@@ -689,7 +689,7 @@ export function LoggingTab({
             )}
 
             {actionState?.status === 'success' && actionState.message && (
-              <p className="rounded-md border border-[color:var(--success-border)] bg-[var(--success-bg)] px-3 py-2 text-sm">
+              <p className="rounded-md border border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] px-3 py-2 text-sm">
                 {actionState.message}
               </p>
             )}

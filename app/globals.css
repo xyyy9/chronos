@@ -13,8 +13,8 @@
   --accent-foreground: #f8fafc;
   --interactive: #70b2b2;
   --interactive-foreground: #0f172a;
-  --selected-bg: #1f2937;
-  --selected-foreground: #ffffff;
+  --selected-bg: #0f172a;
+  --selected-foreground: #f8fafc;
   --success-bg: rgba(22, 163, 74, 0.12);
   --success-border: rgba(22, 163, 74, 0.32);
   --error-bg: rgba(220, 38, 38, 0.12);
@@ -42,8 +42,8 @@
     --accent-foreground: #020617;
     --interactive: #8fd0d0;
     --interactive-foreground: #020617;
-    --selected-bg: #e5e7eb;
-    --selected-foreground: #030712;
+    --selected-bg: #f8fafc;
+    --selected-foreground: #020617;
     --success-bg: rgba(34, 197, 94, 0.15);
     --success-border: rgba(34, 197, 94, 0.36);
     --error-bg: rgba(248, 113, 113, 0.15);
