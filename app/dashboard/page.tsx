@@ -50,7 +50,7 @@ export default async function DashboardPage() {
       : [];
 
     return {
-      logicalDate: log.logicalDate.toISOString(),
+      logicalDate: log.logicalDate,
       mood: log.mood,
       sleepQuality: log.sleepQuality,
       energyLevel: log.energyLevel,

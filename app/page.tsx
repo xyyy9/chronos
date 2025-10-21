@@ -1,6 +1,6 @@
 import { LoggingTab } from '@/app/components/logging-tab';
 import { prisma } from '@/app/lib/prisma';
-import { getCurrentLogicalDate, formatDateKey } from '@/app/lib/date-utils';
+import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,34 +30,34 @@ const parseDailyLife = (value: unknown) =>
     : [];
 
 export default async function Home() {
-  const logicalToday = getCurrentLogicalDate();
-  const selectedDateKey = formatDateKey(logicalToday);
+  const selectedDateKey = getCurrentLogicalDateKey();
+  const [yearStr, monthStr] = selectedDateKey.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
 
-  const startOfMonth = new Date(logicalToday);
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const endOfMonth = new Date(startOfMonth);
-  endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+  const hasValidMonth = !Number.isNaN(year) && !Number.isNaN(month);
+  const startKey = hasValidMonth ? `${yearStr}-${monthStr}-01` : `${selectedDateKey.slice(0, 7)}-01`;
+  const nextMonth = hasValidMonth ? (month === 12 ? 1 : month + 1) : 1;
+  const nextYear = hasValidMonth ? (month === 12 ? year + 1 : year) : year || 1970;
+  const endKey = hasValidMonth
+    ? `${String(nextYear).padStart(4, '0')}-${String(nextMonth).padStart(2, '0')}-01`
+    : `${selectedDateKey.slice(0, 7)}-99`;
 
   const monthLogs = await prisma.dailyLog.findMany({
     where: {
       logicalDate: {
-        gte: startOfMonth,
-        lt: endOfMonth,
+        gte: startKey,
+        lt: endKey,
       },
     },
     orderBy: { logicalDate: 'asc' },
   });
 
-  const initialEntry = monthLogs.find((entry) => {
-    const key = formatDateKey(new Date(entry.logicalDate));
-    return key === selectedDateKey;
-  });
+  const initialEntry = monthLogs.find((entry) => entry.logicalDate === selectedDateKey);
 
   const initialLog = initialEntry
     ? {
-        dateKey: selectedDateKey,
+        dateKey: initialEntry.logicalDate,
         mood: initialEntry.mood,
         sleepQuality: initialEntry.sleepQuality,
         energyLevel: initialEntry.energyLevel,
@@ -70,9 +70,7 @@ export default async function Home() {
       }
     : null;
 
-  const initialLoggedDates = monthLogs.map((entry) =>
-    formatDateKey(new Date(entry.logicalDate)),
-  );
+  const initialLoggedDates = monthLogs.map((entry) => entry.logicalDate);
 
   return (
     <LoggingTab

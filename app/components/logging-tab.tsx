@@ -14,7 +14,7 @@ import {
   type DailyLifeValue,
   type MentalWorldValue,
 } from '@/app/lib/activity-options';
-import { formatDateKey, getCurrentLogicalDate } from '@/app/lib/date-utils';
+import { createUtcDateFromKey, formatDateKey, getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 import { LogCalendar } from '@/app/components/log-calendar';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -266,15 +266,15 @@ export function LoggingTab({
   const isZh = locale === 'zh';
 
   const [todayKey, setTodayKey] = React.useState<string>(() =>
-    initialSelectedDate ?? formatDateKey(getCurrentLogicalDate()),
+    initialSelectedDate ?? getCurrentLogicalDateKey(),
   );
   const baseSelectedDate = initialSelectedDate ?? todayKey;
 
   const [selectedDate, setSelectedDate] = React.useState<string>(baseSelectedDate);
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() => {
-    const seed = new Date(`${baseSelectedDate}T12:00:00`);
+    const seed = createUtcDateFromKey(baseSelectedDate, 12);
     if (Number.isNaN(seed.getTime())) {
-      const fallback = getCurrentLogicalDate();
+      const fallback = new Date();
       fallback.setDate(1);
       fallback.setHours(0, 0, 0, 0);
       return fallback;
@@ -323,7 +323,7 @@ export function LoggingTab({
   );
 
   React.useEffect(() => {
-    const localTodayKey = formatDateKey(getCurrentLogicalDate());
+    const localTodayKey = getCurrentLogicalDateKey();
     setTodayKey(localTodayKey);
     setSelectedDate((prev) => (prev === localTodayKey ? prev : localTodayKey));
     setLoggedDates((prev) => {
@@ -414,7 +414,7 @@ export function LoggingTab({
         };
 
         if (data.log) {
-          const localDateKey = formatDateKey(new Date(data.log.logicalDate));
+          const localDateKey = data.log.logicalDate;
           setFormValues({
             mood: data.log.mood.toString(),
             sleepQuality: data.log.sleepQuality.toString(),
@@ -476,7 +476,7 @@ export function LoggingTab({
     setPrimaryState(hydratePrimaryState(actionState.values.primaryActivities));
 
     if (actionState.values.logicalDate) {
-      const localKey = formatDateKey(new Date(actionState.values.logicalDate));
+      const localKey = actionState.values.logicalDate;
       setSelectedDate(localKey);
       const targetMonth = localKey.slice(0, 7);
       if (targetMonth === monthKey) {

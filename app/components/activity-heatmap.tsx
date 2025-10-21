@@ -77,7 +77,7 @@ export function ActivityHeatmap({
   const dateMap = React.useMemo(() => {
     const map = new Map<string, HeatmapOccurrence['categories']>();
     occurrences.forEach((occurrence) => {
-      const key = formatDateKey(new Date(occurrence.logicalDate));
+      const key = occurrence.logicalDate;
       const filtered = occurrence.categories.filter((entry) => categoryMap.has(entry.value));
       map.set(key, filtered);
     });

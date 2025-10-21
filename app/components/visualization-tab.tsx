@@ -7,7 +7,6 @@ import {
   MENTAL_WORLD_OPTIONS,
   PRIMARY_ACTIVITY_OPTIONS,
 } from '@/app/lib/activity-options';
-import { formatDateKey } from '@/app/lib/date-utils';
 import { useLocale } from '@/app/hooks/use-locale';
 
 type VisualizationLog = {
@@ -50,16 +49,12 @@ export function VisualizationTab({ logs }: VisualizationTabProps) {
         dailyDesc: 'Everyday tasks completed—use the legend to filter.',
       };
 
-  const sortedLogs = [...logs].sort(
-    (a, b) => new Date(a.logicalDate).getTime() - new Date(b.logicalDate).getTime(),
-  );
+  const sortedLogs = [...logs].sort((a, b) => a.logicalDate.localeCompare(b.logicalDate));
 
-  const dateKeys = Array.from(
-    new Set(sortedLogs.map((log) => formatDateKey(new Date(log.logicalDate)))),
-  );
+  const dateKeys = Array.from(new Set(sortedLogs.map((log) => log.logicalDate)));
 
   const metricData: MetricLog[] = sortedLogs.map((log) => ({
-    logicalDate: formatDateKey(new Date(log.logicalDate)),
+    logicalDate: log.logicalDate,
     mood: log.mood,
     sleepQuality: log.sleepQuality,
     energyLevel: log.energyLevel,

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { DAILY_LIFE_VALUES, MENTAL_WORLD_VALUES, type DailyLifeValue, type MentalWorldValue } from '@/app/lib/activity-options';
 
 import { prisma } from './prisma';
-import { getCurrentLogicalDate } from './date-utils';
+import { getCurrentLogicalDateKey } from './date-utils';
 
 const PrimaryActivityEnum = z.enum(['WORK', 'STUDY', 'FITNESS', 'REST', 'SOCIAL', 'CREATIVE']);
 const MentalWorldEnum = z.enum(MENTAL_WORLD_VALUES);
@@ -188,13 +188,12 @@ export async function upsertDailyLog(
     logicalDate: logicalDateInput,
   } = parseResult.data;
 
-  const baseDate = logicalDateInput ? new Date(`${logicalDateInput}T04:00:00`) : undefined;
-  const logicalDate = getCurrentLogicalDate(baseDate);
+  const logicalDateKey = logicalDateInput ?? getCurrentLogicalDateKey();
 
   await prisma.dailyLog.upsert({
-    where: { logicalDate },
+    where: { logicalDate: logicalDateKey },
     create: {
-      logicalDate,
+      logicalDate: logicalDateKey,
       mood,
       sleepQuality,
       energyLevel,
@@ -227,7 +226,7 @@ export async function upsertDailyLog(
       mentalWorldActivities,
       dailyLifeActivities,
       notes,
-      logicalDate: logicalDate.toISOString(),
+      logicalDate: logicalDateKey,
     },
   };
 }

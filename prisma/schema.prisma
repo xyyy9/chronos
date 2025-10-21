@@ -14,17 +14,17 @@ datasource db {
 }
 
 model DailyLog {
-  id           String   @id @default(uuid())
-  logicalDate  DateTime @unique
-  mood         Int
-  sleepQuality Int
-  energyLevel      Int             @default(3)
-  primaryActivities PrimaryActivity[] @default([])
-  mentalWorldActivities Json @default("[]")
-  dailyLifeActivities  Json @default("[]")
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String            @id @default(uuid())
+  logicalDate           String            @unique
+  mood                  Int
+  sleepQuality          Int
+  energyLevel           Int               @default(3)
+  primaryActivities     PrimaryActivity[] @default([])
+  mentalWorldActivities Json              @default("[]")
+  dailyLifeActivities   Json              @default("[]")
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 }
 
 enum PrimaryActivity {
