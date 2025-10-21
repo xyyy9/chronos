@@ -359,9 +359,9 @@ export function ActivityHeatmap({
                           colors.length
                             ? 'border-[rgba(15,23,42,0.2)] shadow-sm'
                             : 'border-[color:var(--border)] opacity-60',
-                          enableDetailPanel && isSelected && 'ring-2 ring-[var(--accent)] ring-offset-1',
-                          enableDetailPanel && displayCategories.length && 'cursor-pointer hover:brightness-110',
-                          (!enableDetailPanel || !displayCategories.length) && 'cursor-default',
+                          enableDetailPanel && isSelected ? 'ring-2 ring-[var(--accent)] ring-offset-1' : null,
+                          enableDetailPanel && displayCategories.length ? 'cursor-pointer hover:brightness-110' : null,
+                          !enableDetailPanel || !displayCategories.length ? 'cursor-default' : null,
                         )}
                         style={{
                           background,
