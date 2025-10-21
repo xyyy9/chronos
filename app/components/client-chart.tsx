@@ -99,7 +99,7 @@ export function ClientChart({ data, locale }: ClientChartProps) {
   const distributions = METRICS.map((metric) => {
     const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
     data.forEach((entry) => {
-      const value = entry[metric.key];
+      const value = entry[metric.key as keyof MetricLog];
       if (value >= 1 && value <= 5) {
         counts[value] += 1;
       }
