@@ -4,6 +4,23 @@ import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
+const normalizeLogicalDate = (input: unknown): string => {
+  if (typeof input === 'string') {
+    return input;
+  }
+  if (input instanceof Date && !Number.isNaN(input.getTime())) {
+    return input.toISOString().slice(0, 10);
+  }
+  if (input === null || input === undefined) {
+    return '';
+  }
+  const fallback = new Date(String(input));
+  if (!Number.isNaN(fallback.getTime())) {
+    return fallback.toISOString().slice(0, 10);
+  }
+  return String(input);
+};
+
 const parseMentalWorld = (value: unknown) =>
   Array.isArray(value)
     ? (value as Array<unknown>).flatMap((entry) => {
@@ -53,11 +70,13 @@ export default async function Home() {
     orderBy: { logicalDate: 'asc' },
   });
 
-  const initialEntry = monthLogs.find((entry) => entry.logicalDate === selectedDateKey);
+  const initialEntry = monthLogs.find(
+    (entry) => normalizeLogicalDate(entry.logicalDate) === selectedDateKey,
+  );
 
   const initialLog = initialEntry
     ? {
-        dateKey: initialEntry.logicalDate,
+        dateKey: normalizeLogicalDate(initialEntry.logicalDate),
         mood: initialEntry.mood,
         sleepQuality: initialEntry.sleepQuality,
         energyLevel: initialEntry.energyLevel,
@@ -70,7 +89,7 @@ export default async function Home() {
       }
     : null;
 
-  const initialLoggedDates = monthLogs.map((entry) => entry.logicalDate);
+  const initialLoggedDates = monthLogs.map((entry) => normalizeLogicalDate(entry.logicalDate));
 
   return (
     <LoggingTab
