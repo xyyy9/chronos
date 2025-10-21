@@ -97,8 +97,44 @@ const TRANSLATIONS: Record<LocaleKey, {
     notesPlaceholder: 'Anything else you want to remember?',
     save: 'Save Log',
     saving: 'Saving…',
-    calendarLegend: 'Green means logged, blank means pending.',
+  calendarLegend: 'Green means logged, blank means pending.',
   },
+};
+
+const MONTH_NAMES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const WEEKDAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const WEEKDAY_NAMES_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const;
+
+const formatDisplayDate = (dateKey: string, locale: LocaleKey) => {
+  const [yearStr, monthStr, dayStr] = dateKey.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const day = Number(dayStr);
+
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(monthIndex) ||
+    Number.isNaN(day) ||
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return dateKey;
+  }
+
+  const utcDate = new Date(Date.UTC(year, monthIndex, day));
+  const weekday = utcDate.getUTCDay();
+
+  if (Number.isNaN(weekday)) {
+    return dateKey;
+  }
+
+  if (locale === 'zh') {
+    return `${monthIndex + 1}月${day}日 ${WEEKDAY_NAMES_ZH[weekday]}`;
+  }
+
+  return `${WEEKDAY_NAMES_EN[weekday]}, ${MONTH_NAMES_EN[monthIndex]} ${day}`;
 };
 
 type FormValues = {
@@ -229,7 +265,9 @@ export function LoggingTab({
   const t = TRANSLATIONS[locale];
   const isZh = locale === 'zh';
 
-  const todayKey = React.useMemo(() => formatDateKey(getCurrentLogicalDate()), []);
+  const [todayKey, setTodayKey] = React.useState<string>(() =>
+    initialSelectedDate ?? formatDateKey(getCurrentLogicalDate()),
+  );
   const baseSelectedDate = initialSelectedDate ?? todayKey;
 
   const [selectedDate, setSelectedDate] = React.useState<string>(baseSelectedDate);
@@ -283,6 +321,20 @@ export function LoggingTab({
     upsertDailyLog,
     INITIAL_ACTION_STATE,
   );
+
+  React.useEffect(() => {
+    const localTodayKey = formatDateKey(getCurrentLogicalDate());
+    setTodayKey(localTodayKey);
+    setSelectedDate((prev) => (prev === localTodayKey ? prev : localTodayKey));
+    setLoggedDates((prev) => {
+      if (prev.has(localTodayKey)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(localTodayKey);
+      return next;
+    });
+  }, []);
 
   const mentalPayload = React.useMemo(
     () => JSON.stringify(buildMentalPayload(mentalState)),
@@ -546,17 +598,10 @@ export function LoggingTab({
     [mentalState, isZh],
   );
 
-  const selectedDateLabel = React.useMemo(() => {
-    const date = new Date(`${selectedDate}T12:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      return selectedDate;
-    }
-    return new Intl.DateTimeFormat(isZh ? 'zh-CN' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      weekday: 'short',
-    }).format(date);
-  }, [selectedDate, isZh]);
+  const selectedDateLabel = React.useMemo(
+    () => formatDisplayDate(selectedDate, locale),
+    [selectedDate, locale],
+  );
 
   return (
     <div className="pb-32 text-[var(--foreground)]">

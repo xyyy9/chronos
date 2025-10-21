@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 import { formatDateKey } from '@/app/lib/date-utils';
 
@@ -31,7 +32,6 @@ type ActivityHeatmapProps = {
 type SelectedCell = {
   dateKey: string;
   categories: HeatmapOccurrence['categories'];
-  anchorRect: { top: number; left: number; width: number; height: number };
 };
 
 const cn = (...inputs: Array<string | undefined | null | false>) =>
@@ -94,8 +94,8 @@ export function ActivityHeatmap({
   const [activeFilters, setActiveFilters] = React.useState<Set<string>>(() => new Set());
   const [selectedCell, setSelectedCell] = React.useState<SelectedCell | null>(() => null);
   const [overlayPosition, setOverlayPosition] = React.useState<{ top: number; left: number } | null>(null);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
+  const selectedCellElementRef = React.useRef<HTMLButtonElement | null>(null);
 
   const detailFormatter = React.useMemo(() => {
     try {
@@ -126,6 +126,12 @@ export function ActivityHeatmap({
       setOverlayPosition(null);
     }
   }, [enableDetailPanel, selectedCell, allDateKeys]);
+
+  React.useEffect(() => {
+    if (!selectedCell) {
+      selectedCellElementRef.current = null;
+    }
+  }, [selectedCell]);
 
   React.useEffect(() => {
     if (!enableDetailPanel || !selectedCell) {
@@ -168,31 +174,65 @@ export function ActivityHeatmap({
     };
   }, [enableDetailPanel, selectedCell]);
 
-  React.useLayoutEffect(() => {
-    if (!enableDetailPanel || !selectedCell || !overlayRef.current || !containerRef.current) {
+  const updateOverlayPosition = React.useCallback(() => {
+    if (!enableDetailPanel || !selectedCell || !overlayRef.current || !selectedCellElementRef.current) {
       return;
     }
 
+    const anchorRect = selectedCellElementRef.current.getBoundingClientRect();
     const overlay = overlayRef.current;
-    const container = containerRef.current;
     const overlayHeight = overlay.offsetHeight;
     const overlayWidth = overlay.offsetWidth;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
 
-    let top = selectedCell.anchorRect.top - overlayHeight - 8;
-    if (top < container.scrollTop + 8) {
-      top = selectedCell.anchorRect.top + selectedCell.anchorRect.height + 8;
+    let top = anchorRect.top - overlayHeight - 12;
+    if (top < 12) {
+      top = anchorRect.bottom + 12;
+    }
+    if (top + overlayHeight > viewportHeight - 12) {
+      top = Math.max(12, viewportHeight - overlayHeight - 12);
     }
 
-    let left = selectedCell.anchorRect.left + selectedCell.anchorRect.width + 8;
-    if (left + overlayWidth > container.scrollLeft + container.clientWidth - 8) {
-      left = selectedCell.anchorRect.left - overlayWidth - 8;
+    let left = anchorRect.right + 12;
+    if (left + overlayWidth > viewportWidth - 12) {
+      left = anchorRect.left - overlayWidth - 12;
     }
-    if (left < container.scrollLeft + 8) {
-      left = container.scrollLeft + 8;
+    if (left < 12) {
+      left = Math.max(
+        12,
+        Math.min(anchorRect.left + anchorRect.width / 2 - overlayWidth / 2, viewportWidth - overlayWidth - 12),
+      );
     }
 
     setOverlayPosition({ top, left });
   }, [enableDetailPanel, selectedCell]);
+
+  React.useLayoutEffect(() => {
+    updateOverlayPosition();
+  }, [updateOverlayPosition]);
+
+  React.useEffect(() => {
+    if (!enableDetailPanel || !selectedCell) {
+      return;
+    }
+
+    const handleReposition = () => {
+      if (!selectedCellElementRef.current || !selectedCellElementRef.current.isConnected) {
+        setSelectedCell(null);
+        setOverlayPosition(null);
+        return;
+      }
+      updateOverlayPosition();
+    };
+
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [enableDetailPanel, selectedCell, updateOverlayPosition]);
   const toggleFilter = (value: string) => {
     setActiveFilters((prev) => {
       if (prev.size === 1 && prev.has(value)) {
@@ -276,7 +316,7 @@ export function ActivityHeatmap({
             ))}
           </div>
 
-          <div className="relative" ref={containerRef}>
+          <div className="relative">
             <div className="absolute -top-5 left-0 flex gap-8 text-xs text-[var(--muted-foreground)]">
               {monthLabels.map((label) => (
                 <span key={label.label} style={{ marginLeft: `${label.weekIndex * 16}px` }}>
@@ -326,27 +366,14 @@ export function ActivityHeatmap({
                         return;
                       }
                       const rect = event.currentTarget.getBoundingClientRect();
-                      const containerRect = containerRef.current?.getBoundingClientRect();
-                      const offsetLeft = containerRect ? containerRect.left : 0;
-                      const offsetTop = containerRect ? containerRect.top : 0;
-                      const scrollLeft = containerRef.current?.scrollLeft ?? 0;
-                      const scrollTop = containerRef.current?.scrollTop ?? 0;
-                      const relativeTop = rect.top - offsetTop + scrollTop;
-                      const relativeLeft = rect.left - offsetLeft + scrollLeft;
-                      const anchorRect = {
-                        top: relativeTop,
-                        left: relativeLeft,
-                        width: rect.width,
-                        height: rect.height,
-                      };
+                      selectedCellElementRef.current = event.currentTarget;
                       setSelectedCell({
                         dateKey: key,
                         categories: displayCategories,
-                        anchorRect,
                       });
                       setOverlayPosition({
-                        top: anchorRect.top,
-                        left: anchorRect.left + anchorRect.width + 12,
+                        top: rect.bottom + 12,
+                        left: rect.left,
                       });
                     };
 
@@ -380,45 +407,48 @@ export function ActivityHeatmap({
                 </div>
               ))}
             </div>
+            {enableDetailPanel &&
+              selectedCell &&
+              selectedCell.categories.length > 0 &&
+              overlayPosition &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={overlayRef}
+                  className="fixed z-50 w-[200px] rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3 shadow-xl"
+                  style={{
+                    top: overlayPosition.top,
+                    left: overlayPosition.left,
+                  }}
+                >
+                  <header className="mb-2 text-[11px] text-[var(--muted-foreground)]">
+                    {detailFormatter.format(new Date(`${selectedCell.dateKey}T12:00:00`))}
+                  </header>
+                  <div className="flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-[var(--foreground)]">
+                    {selectedCell.categories.map((entry, index) => {
+                      const category = categoryMap.get(entry.value);
+                      const label = category?.label ?? entry.value;
 
-      {enableDetailPanel && selectedCell && selectedCell.categories.length > 0 && overlayPosition && (
-        <div
-          ref={overlayRef}
-          className="absolute z-30 w-[200px] rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3 shadow-xl"
-          style={{
-            top: overlayPosition.top,
-            left: overlayPosition.left,
-          }}
-        >
-                <header className="mb-2 text-[11px] text-[var(--muted-foreground)]">
-                  {detailFormatter.format(new Date(`${selectedCell.dateKey}T12:00:00`))}
-                </header>
-                <div className="flex flex-wrap gap-x-3 gap-y-2 text-[11px] text-[var(--foreground)]">
-                  {selectedCell.categories.map((entry, index) => {
-                    const category = categoryMap.get(entry.value);
-                    const label = category?.label ?? entry.value;
-
-                    return (
-                      <div
-                        key={`${selectedCell.dateKey}-${entry.value}-${index}`}
-                        className="flex flex-col text-[11px]"
-                      >
-                        <span className="font-medium">
-                          <span
-                            className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
-                            style={{ backgroundColor: category?.color ?? '#2563eb' }}
-                          />
-                          {label}
-                        </span>
-                        {entry.detail && (
-                          <span className="text-[var(--muted-foreground)]">{entry.detail}</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      return (
+                        <div
+                          key={`${selectedCell.dateKey}-${entry.value}-${index}`}
+                          className="flex flex-col text-[11px]"
+                        >
+                          <span className="font-medium">
+                            <span
+                              className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
+                              style={{ backgroundColor: category?.color ?? '#2563eb' }}
+                            />
+                            {label}
+                          </span>
+                          {entry.detail && <span className="text-[var(--muted-foreground)]">{entry.detail}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>,
+                document.body,
+              )}
           </div>
         </div>
       </div>

@@ -21,15 +21,13 @@ const CARD_BG = ['bg-blue-50/40', 'bg-fuchsia-50/40', 'bg-emerald-50/40'];
 
 type MetricKey = 'mood' | 'sleepQuality' | 'energyLevel';
 
-const useMediaQuery = (query: string) => {
-  const [matches, setMatches] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return window.matchMedia(query).matches;
-  });
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
-  React.useEffect(() => {
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = React.useState(false);
+
+  useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -37,7 +35,6 @@ const useMediaQuery = (query: string) => {
     const mediaQuery = window.matchMedia(query);
     const handler = (event: MediaQueryListEvent) => setMatches(event.matches);
 
-    // Ensure state is in sync on mount
     setMatches(mediaQuery.matches);
 
     if (typeof mediaQuery.addEventListener === 'function') {
@@ -45,7 +42,6 @@ const useMediaQuery = (query: string) => {
       return () => mediaQuery.removeEventListener('change', handler);
     }
 
-    // Safari fallback
     mediaQuery.addListener(handler);
     return () => mediaQuery.removeListener(handler);
   }, [query]);
@@ -132,7 +128,9 @@ export function ClientChart({ data, locale }: ClientChartProps) {
         {distributions.map((metric, metricIndex) => (
           <div
             key={metric.key}
-            className={`flex items-stretch gap-3 rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] p-3 shadow-sm ${CARD_BG[metricIndex % CARD_BG.length]} ${isWide ? 'min-w-0' : ''}`}
+            className={`flex items-stretch gap-3 rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] p-3 shadow-sm ${CARD_BG[metricIndex % CARD_BG.length]} ${
+              isWide ? 'min-w-0' : ''
+            }`}
           >
             <div className="flex shrink-0 items-center justify-center">
               <div className="h-24 w-24 shrink-0 sm:h-28 sm:w-28">
