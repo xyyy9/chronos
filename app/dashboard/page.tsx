@@ -1,5 +1,6 @@
 import { VisualizationTab } from '@/app/components/visualization-tab';
 import { prisma } from '@/app/lib/prisma';
+import { formatDateKey } from '@/app/lib/date-utils';
 
 type DashboardLog = {
   logicalDate: string;
@@ -49,8 +50,13 @@ export default async function DashboardPage() {
         )
       : [];
 
+    const logicalDate =
+      typeof log.logicalDate === 'string'
+        ? log.logicalDate
+        : formatDateKey(log.logicalDate);
+
     return {
-      logicalDate: log.logicalDate,
+      logicalDate,
       mood: log.mood,
       sleepQuality: log.sleepQuality,
       energyLevel: log.energyLevel,
