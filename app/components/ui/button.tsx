@@ -12,11 +12,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
-    'bg-[var(--accent)] text-[var(--accent-foreground)] hover:opacity-90 focus-visible:outline-[var(--accent)]',
+    'bg-[var(--interactive)] text-[var(--interactive-foreground)] hover:opacity-90 focus-visible:outline-[var(--interactive)]',
   outline:
-    'border border-[color:var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-hover)] focus-visible:outline-[var(--accent)]',
+    'border border-[var(--interactive)] bg-[var(--surface)] text-[var(--interactive)] hover:bg-[var(--interactive)]/10 focus-visible:outline-[var(--interactive)]',
   ghost:
-    'text-[var(--foreground)] hover:bg-[var(--surface-hover)] focus-visible:outline-[var(--accent)]',
+    'text-[var(--interactive)] hover:bg-[var(--interactive)]/10 focus-visible:outline-[var(--interactive)]',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

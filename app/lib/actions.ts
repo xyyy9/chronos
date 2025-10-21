@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { DAILY_LIFE_VALUES, MENTAL_WORLD_VALUES, type DailyLifeValue, type MentalWorldValue } from '@/app/lib/activity-options';
+import type { NewsJournalEntry } from '@/app/lib/news';
 
 import { prisma } from './prisma';
 import { getCurrentLogicalDateKey } from './date-utils';
@@ -12,6 +13,7 @@ import { getCurrentLogicalDateKey } from './date-utils';
 const PrimaryActivityEnum = z.enum(['WORK', 'STUDY', 'FITNESS', 'REST', 'SOCIAL', 'CREATIVE']);
 const MentalWorldEnum = z.enum(MENTAL_WORLD_VALUES);
 const DailyLifeEnum = z.enum(DAILY_LIFE_VALUES);
+const NewsLanguageEnum = z.enum(['zh', 'en']);
 
 const mentalWorldSchema = z.array(
   z.object({
@@ -24,6 +26,22 @@ const mentalWorldSchema = z.array(
 );
 
 const dailyLifeSchema = z.array(DailyLifeEnum);
+const newsEntrySchema = z.array(
+  z.object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    url: z
+      .string()
+      .url()
+      .or(z.string().min(1, '新闻链接不能为空')),
+    source: z.string().min(1),
+    language: NewsLanguageEnum,
+    publishedAt: z.string().optional(),
+    rating: z.coerce.number().int().min(1).max(5),
+    comment: z.string().max(2000).optional().transform((value) => value ?? ''),
+    recordedAt: z.string().min(1),
+  }),
+);
 
 const DailyLogSchema = z.object({
   mood: z.coerce.number().int().min(1).max(5),
@@ -68,6 +86,19 @@ const DailyLogSchema = z.object({
       }
     })
     .pipe(dailyLifeSchema),
+  newsEntries: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return [];
+      try {
+        return JSON.parse(value);
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: '新闻评论记录格式无效' });
+        return z.NEVER;
+      }
+    })
+    .pipe(newsEntrySchema),
   notes: z
     .string()
     .max(1000)
@@ -91,6 +122,7 @@ type DailyLogFormValues = {
   primaryActivities?: PrimaryActivity[];
   mentalWorldActivities?: MentalWorldEntry[];
   dailyLifeActivities?: DailyLifeValue[];
+  newsEntries?: NewsJournalEntry[];
   notes?: string;
   logicalDate?: string;
 };
@@ -134,6 +166,16 @@ const parsePrimaryActivitiesFallback = (
   }
 };
 
+const parseNewsEntriesFallback = (raw: FormDataEntryValue | null): NewsJournalEntry[] => {
+  if (typeof raw !== 'string' || !raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as NewsJournalEntry[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 export async function upsertDailyLog(
   _prevState: UpsertDailyLogState,
   formData: FormData,
@@ -147,6 +189,7 @@ export async function upsertDailyLog(
     primaryActivities: formData.get('primaryActivities'),
     mentalWorldActivities: formData.get('mentalWorldActivities'),
     dailyLifeActivities: formData.get('dailyLifeActivities'),
+    newsEntries: formData.get('newsEntries'),
     notes: formData.get('notes'),
     logicalDate: formData.get('logicalDate'),
   });
@@ -171,6 +214,7 @@ export async function upsertDailyLog(
         primaryActivities: parsePrimaryActivitiesFallback(formData.get('primaryActivities')),
         mentalWorldActivities: parseMentalWorldFallback(formData.get('mentalWorldActivities')),
         dailyLifeActivities: parseDailyLifeFallback(formData.get('dailyLifeActivities')),
+        newsEntries: parseNewsEntriesFallback(formData.get('newsEntries')),
         notes: formData.get('notes')?.toString(),
         logicalDate: formData.get('logicalDate')?.toString(),
       },
@@ -184,6 +228,7 @@ export async function upsertDailyLog(
     primaryActivities,
     mentalWorldActivities,
     dailyLifeActivities,
+    newsEntries,
     notes,
     logicalDate: logicalDateInput,
   } = parseResult.data;
@@ -200,6 +245,7 @@ export async function upsertDailyLog(
       primaryActivities,
       mentalWorldActivities,
       dailyLifeActivities,
+      newsEntries,
       notes,
     },
     update: {
@@ -209,11 +255,14 @@ export async function upsertDailyLog(
       primaryActivities,
       mentalWorldActivities,
       dailyLifeActivities,
+      newsEntries,
       notes,
     },
   });
 
   revalidatePath('/dashboard');
+  revalidatePath('/news');
+  revalidatePath('/');
 
   return {
     status: 'success',
@@ -225,6 +274,7 @@ export async function upsertDailyLog(
       primaryActivities,
       mentalWorldActivities,
       dailyLifeActivities,
+      newsEntries,
       notes,
       logicalDate: logicalDateKey,
     },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { prisma } from '@/app/lib/prisma';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
+import type { NewsJournalEntry } from '@/app/lib/news';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -23,6 +24,11 @@ export async function GET(request: Request) {
       ? (log.dailyLifeActivities as string[])
       : [];
 
+  const newsEntries =
+    log && Array.isArray(log.newsEntries)
+      ? (log.newsEntries as NewsJournalEntry[])
+      : [];
+
   return NextResponse.json({
     log: log
       ? {
@@ -36,6 +42,7 @@ export async function GET(request: Request) {
             : [],
           mentalWorldActivities,
           dailyLifeActivities,
+          newsEntries,
           notes: log.notes,
         }
       : null,

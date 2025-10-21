@@ -34,6 +34,8 @@ type SelectedCell = {
   categories: HeatmapOccurrence['categories'];
 };
 
+const TAG_PALETTE = ['#D88C9A', '#f1dc7e', '#a7d699', '#7cc6b7', '#7ebac9', '#7583d1', '#846dc4'] as const;
+
 const cn = (...inputs: Array<string | undefined | null | false>) =>
   inputs.filter(Boolean).join(' ');
 
@@ -69,9 +71,18 @@ export function ActivityHeatmap({
   enableDetailPanel = false,
   detailLocale,
 }: ActivityHeatmapProps) {
-  const categoryMap = React.useMemo(
-    () => new Map(categories.map((category) => [category.value, category])),
+  const normalizedCategories = React.useMemo(
+    () =>
+      categories.map((category, index) => ({
+        ...category,
+        color: TAG_PALETTE[index % TAG_PALETTE.length],
+      })),
     [categories],
+  );
+
+  const categoryMap = React.useMemo(
+    () => new Map(normalizedCategories.map((category) => [category.value, category])),
+    [normalizedCategories],
   );
 
   const dateMap = React.useMemo(() => {
@@ -276,7 +287,7 @@ export function ActivityHeatmap({
     weeks.push(days.slice(i, i + 7));
   }
 
-  const filteredLegend = categories.map((category) => ({
+  const filteredLegend = normalizedCategories.map((category) => ({
     ...category,
     active: activeFilters.size === 0 || activeFilters.has(category.value),
   }));
@@ -462,7 +473,7 @@ export function ActivityHeatmap({
             className={cn(
               'flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition',
               category.active
-                ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--foreground)]'
+                ? 'border-[#70b2b2] bg-white text-[var(--foreground)]'
                 : 'border-[color:var(--border)] bg-[var(--surface-raised)] text-[var(--muted-foreground)]',
             )}
           >

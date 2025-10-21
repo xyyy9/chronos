@@ -68,7 +68,7 @@ export function LogCalendar({
           <button
             type="button"
             onClick={() => onMonthChange(-1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--border)] text-sm transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--interactive)] text-sm text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
             aria-label={prevMonthLabel}
           >
             ‹
@@ -76,7 +76,7 @@ export function LogCalendar({
           <button
             type="button"
             onClick={() => onMonthChange(1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:var(--border)] text-sm transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--interactive)] text-sm text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
             aria-label={nextMonthLabel}
           >
             ›
@@ -112,13 +112,15 @@ export function LogCalendar({
               onClick={() => handleDayClick(day)}
               className={cn(
                 'flex h-10 w-full items-center justify-center rounded-md border text-sm transition',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--selected-bg)]',
                 isSelected
-                  ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                  ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                   : hasLog
                   ? 'border-[color:var(--success-border)] bg-[var(--success-bg)] text-[var(--foreground)]'
                   : 'border-[color:var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
-                isToday && !isSelected && 'ring-1 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface)]',
+                isToday &&
+                  !isSelected &&
+                  'ring-1 ring-[var(--interactive)] ring-offset-2 ring-offset-[var(--surface)]',
               )}
             >
               {day}

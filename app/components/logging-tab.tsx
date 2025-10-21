@@ -15,6 +15,7 @@ import {
   type MentalWorldValue,
 } from '@/app/lib/activity-options';
 import { createUtcDateFromKey, formatDateKey, getCurrentLogicalDateKey } from '@/app/lib/date-utils';
+import type { NewsJournalEntry } from '@/app/lib/news';
 import { LogCalendar } from '@/app/components/log-calendar';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -158,6 +159,7 @@ type InitialLogSnapshot = {
   primaryActivities: string[];
   mentalWorldActivities: Array<{ value: string; detail?: string }>;
   dailyLifeActivities: string[];
+  newsEntries: NewsJournalEntry[];
   notes?: string | null;
 };
 
@@ -348,6 +350,9 @@ export function LoggingTab({
     () => JSON.stringify(buildPrimaryPayload(primaryState)),
     [primaryState],
   );
+  const [newsEntriesJson, setNewsEntriesJson] = React.useState<string>(() =>
+    JSON.stringify(initialLog?.newsEntries ?? []),
+  );
 
   const resetForm = React.useCallback(() => {
     setFormValues(createInitialFormValues());
@@ -408,6 +413,7 @@ export function LoggingTab({
                 primaryActivities: string[];
                 mentalWorldActivities: Array<{ value: string; detail?: string }>;
                 dailyLifeActivities: string[];
+                newsEntries: NewsJournalEntry[];
                 notes?: string;
               }
             | null;
@@ -424,6 +430,7 @@ export function LoggingTab({
           setMentalState(hydrateMentalState(data.log.mentalWorldActivities));
           setDailyState(hydrateDailyLifeState(data.log.dailyLifeActivities));
           setPrimaryState(hydratePrimaryState(data.log.primaryActivities));
+          setNewsEntriesJson(JSON.stringify(data.log.newsEntries ?? []));
           setLoggedDates((prev) => {
             const next = new Set(prev);
             next.add(localDateKey);
@@ -439,6 +446,7 @@ export function LoggingTab({
             next.delete(dateKey);
             return next;
           });
+          setNewsEntriesJson('[]');
         }
       } catch (error) {
         setFetchError(
@@ -474,6 +482,7 @@ export function LoggingTab({
     setMentalState(hydrateMentalState(actionState.values.mentalWorldActivities));
     setDailyState(hydrateDailyLifeState(actionState.values.dailyLifeActivities));
     setPrimaryState(hydratePrimaryState(actionState.values.primaryActivities));
+    setNewsEntriesJson(JSON.stringify(actionState.values.newsEntries ?? []));
 
     if (actionState.values.logicalDate) {
       const localKey = actionState.values.logicalDate;
@@ -611,7 +620,7 @@ export function LoggingTab({
             <button
               type="button"
               onClick={() => handleShiftDay(-1)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-lg font-semibold transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-lg font-semibold transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
               aria-label={t.prevDay}
             >
               ‹
@@ -619,7 +628,7 @@ export function LoggingTab({
             <button
               type="button"
               onClick={() => setIsCalendarOpen((prev) => !prev)}
-              className="flex flex-1 items-center justify-center rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] px-4 py-3 text-center transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              className="flex flex-1 items-center justify-center rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] px-4 py-3 text-center transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
               aria-label={t.dateButtonAria}
             >
               <span className="text-lg font-semibold text-[var(--foreground)]">
@@ -630,7 +639,7 @@ export function LoggingTab({
               type="button"
               onClick={() => handleShiftDay(1)}
               disabled={isNextDisabled}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-lg font-semibold transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-lg font-semibold transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={t.nextDay}
             >
               ›
@@ -696,6 +705,7 @@ export function LoggingTab({
               <input type="hidden" name="primaryActivities" value={primaryPayload} />
               <input type="hidden" name="mentalWorldActivities" value={mentalPayload} />
               <input type="hidden" name="dailyLifeActivities" value={dailyPayload} />
+              <input type="hidden" name="newsEntries" value={newsEntriesJson} />
 
               <section className="flex flex-col gap-5 rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-sm">
                 <div className="flex flex-col gap-2">
@@ -713,9 +723,9 @@ export function LoggingTab({
                           disabled={isPending}
                           className={cn(
                             'flex h-12 w-12 items-center justify-center rounded-lg border text-sm font-semibold transition',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                             isSelected
-                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                              ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                               : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                           )}
                         >
@@ -749,9 +759,9 @@ export function LoggingTab({
                           disabled={isPending}
                           className={cn(
                             'flex h-12 w-12 items-center justify-center rounded-lg border text-sm font-semibold transition',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                             isSelected
-                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                              ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                               : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                           )}
                         >
@@ -785,9 +795,9 @@ export function LoggingTab({
                           disabled={isPending}
                           className={cn(
                             'flex h-12 w-12 items-center justify-center rounded-lg border text-sm font-semibold transition',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                             isSelected
-                              ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                              ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                               : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                           )}
                         >
@@ -821,9 +831,9 @@ export function LoggingTab({
                         disabled={isPending}
                         className={cn(
                           'flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition',
-                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                           isSelected
-                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                            ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                             : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                         )}
                       >
@@ -858,9 +868,9 @@ export function LoggingTab({
                         disabled={isPending}
                         className={cn(
                           'flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition',
-                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                           isSelected
-                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                            ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                             : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                         )}
                       >
@@ -913,9 +923,9 @@ export function LoggingTab({
                         disabled={isPending}
                         className={cn(
                           'flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition',
-                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]',
                           isSelected
-                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                            ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                             : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]',
                         )}
                       >

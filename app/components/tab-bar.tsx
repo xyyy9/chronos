@@ -10,6 +10,7 @@ type TabConfig = {
 
 const tabs: TabConfig[] = [
   { href: '/', label: 'Log' },
+  { href: '/news', label: 'News' },
   { href: '/dashboard', label: 'Dashboard' },
 ];
 
@@ -30,8 +31,8 @@ export function TabBar() {
               href={tab.href}
               className={`flex-1 rounded-full px-4 py-2 text-center text-sm font-medium transition ${
                 isActive
-                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
-                  : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]'
+                  ? 'bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
+                  : 'text-[var(--interactive)] hover:bg-[var(--interactive)]/10'
               }`}
             >
               {tab.label}

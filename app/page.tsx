@@ -1,6 +1,7 @@
 import { LoggingTab } from '@/app/components/logging-tab';
 import { prisma } from '@/app/lib/prisma';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
+import { normalizeSavedNewsEntries } from '@/app/lib/news';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +86,7 @@ export default async function Home() {
           : [],
         mentalWorldActivities: parseMentalWorld(initialEntry.mentalWorldActivities),
         dailyLifeActivities: parseDailyLife(initialEntry.dailyLifeActivities),
+        newsEntries: normalizeSavedNewsEntries(initialEntry.newsEntries),
         notes: initialEntry.notes,
       }
     : null;
