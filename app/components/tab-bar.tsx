@@ -17,7 +17,7 @@ export function TabBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-white/95 backdrop-blur">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[color:var(--border)] bg-[var(--surface)] backdrop-blur">
       <div className="mx-auto flex max-w-md items-stretch gap-2 px-6 py-3">
         {tabs.map((tab) => {
           const isActive =
@@ -30,8 +30,8 @@ export function TabBar() {
               href={tab.href}
               className={`flex-1 rounded-full px-4 py-2 text-center text-sm font-medium transition ${
                 isActive
-                  ? 'bg-black text-white shadow-sm'
-                  : 'text-black/60 hover:bg-black/5'
+                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]'
               }`}
             >
               {tab.label}

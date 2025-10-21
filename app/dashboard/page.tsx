@@ -1,6 +1,16 @@
 import { VisualizationTab } from '@/app/components/visualization-tab';
-import { ChartPoint } from '@/app/components/client-chart';
 import { prisma } from '@/app/lib/prisma';
+
+type DashboardLog = {
+  logicalDate: string;
+  mood: number;
+  sleepQuality: number;
+  energyLevel: number;
+  primaryActivities: string[];
+  mentalWorldActivities: Array<{ value: string; detail: string }>;
+  dailyLifeActivities: string[];
+  notes?: string | null;
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +19,47 @@ export default async function DashboardPage() {
     orderBy: { logicalDate: 'asc' },
   });
 
-  const chartData: ChartPoint[] = logs.map((log) => ({
-    logicalDate: log.logicalDate.toISOString(),
-    mood: log.mood,
-    sleepQuality: log.sleepQuality,
-  }));
+  const data: DashboardLog[] = logs.map((log) => {
+    const mental =
+      Array.isArray(log.mentalWorldActivities) && log.mentalWorldActivities !== null
+        ? (log.mentalWorldActivities as Array<{ value?: unknown; detail?: unknown }>).flatMap(
+            (entry) => {
+              if (
+                typeof entry?.value === 'string' &&
+                typeof entry?.detail === 'string' &&
+                entry.value
+              ) {
+                return [{ value: entry.value, detail: entry.detail }];
+              }
+              return [];
+            },
+          )
+        : [];
 
-  return <VisualizationTab data={chartData} />;
+    const daily =
+      Array.isArray(log.dailyLifeActivities) && log.dailyLifeActivities !== null
+        ? (log.dailyLifeActivities as Array<unknown>).flatMap((entry) =>
+            typeof entry === 'string' && entry ? [entry] : [],
+          )
+        : [];
+
+    const primaryActivities = Array.isArray(log.primaryActivities)
+      ? (log.primaryActivities as Array<unknown>).flatMap((entry) =>
+          typeof entry === 'string' && entry ? [entry] : [],
+        )
+      : [];
+
+    return {
+      logicalDate: log.logicalDate.toISOString(),
+      mood: log.mood,
+      sleepQuality: log.sleepQuality,
+      energyLevel: log.energyLevel,
+      primaryActivities,
+      mentalWorldActivities: mental,
+      dailyLifeActivities: daily,
+      notes: log.notes,
+    };
+  });
+
+  return <VisualizationTab logs={data} />;
 }
