@@ -19,6 +19,8 @@ const SCORE_COLORS = ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#2563eb'];
 
 const CARD_BG = ['bg-blue-50/40', 'bg-fuchsia-50/40', 'bg-emerald-50/40'];
 
+type MetricKey = 'mood' | 'sleepQuality' | 'energyLevel';
+
 const useMediaQuery = (query: string) => {
   const [matches, setMatches] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') {
@@ -61,7 +63,7 @@ export function ClientChart({ data, locale }: ClientChartProps) {
   const description = isZh
     ? '展示分数段的比例，左侧饼图、右侧说明，快速了解整体趋势。'
     : 'See the distribution of scores across mood, sleep, and energy at a glance.';
-  const METRICS = isZh
+  const METRICS: Array<{ key: MetricKey; label: string }> = isZh
     ? [
         { key: 'mood', label: '心情' },
         { key: 'sleepQuality', label: '睡眠质量' },
@@ -99,7 +101,7 @@ export function ClientChart({ data, locale }: ClientChartProps) {
   const distributions = METRICS.map((metric) => {
     const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
     data.forEach((entry) => {
-      const value = entry[metric.key as keyof MetricLog];
+      const value = entry[metric.key];
       if (value >= 1 && value <= 5) {
         counts[value] += 1;
       }
