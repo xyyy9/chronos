@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { prisma } from '@/app/lib/prisma';
+
 export type NewsArticle = {
   id: string;
   title: string;
@@ -13,6 +15,7 @@ export type NewsJournalEntry = NewsArticle & {
   rating: number;
   comment: string;
   recordedAt: string;
+  snapshotId?: string;
 };
 
 type ExternalArticle = {
@@ -65,6 +68,8 @@ const zhEndpoint = process.env.NEWS_ZH_API_URL;
 const zhApiKey = process.env.NEWS_ZH_API_KEY;
 const enEndpoint = process.env.NEWS_EN_API_URL;
 const enApiKey = process.env.NEWS_EN_API_KEY;
+
+const NEWS_CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours
 
 const hashString = (value: string) =>
   createHash('sha256').update(value).digest('hex').slice(0, 16);
@@ -119,10 +124,7 @@ const fetchSourceArticles = async (
       headers['Authorization'] = apiKey;
       headers['X-Api-Key'] = apiKey;
     }
-    const response = await fetch(endpoint, {
-      headers,
-      next: { revalidate: 60 * 30 },
-    });
+    const response = await fetch(endpoint, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch news from ${endpoint}`);
     }
@@ -139,10 +141,32 @@ const fetchSourceArticles = async (
   }
 };
 
+const loadCachedArticles = async (
+  language: 'zh' | 'en',
+  loader: () => Promise<NewsArticle[]>,
+): Promise<NewsArticle[]> => {
+  const cache = await prisma.newsCache.findUnique({ where: { language } });
+  const now = Date.now();
+  if (cache) {
+    const age = now - new Date(cache.fetchedAt).getTime();
+    if (age < NEWS_CACHE_TTL_MS) {
+      return cache.payload as NewsArticle[];
+    }
+  }
+
+  const fresh = await loader();
+  await prisma.newsCache.upsert({
+    where: { language },
+    update: { payload: fresh, fetchedAt: new Date() },
+    create: { language, payload: fresh, fetchedAt: new Date() },
+  });
+  return fresh;
+};
+
 export async function fetchDailyNews(): Promise<NewsArticle[]> {
   const [zhArticles, enArticles] = await Promise.all([
-    fetchSourceArticles(zhEndpoint, zhApiKey, 'zh'),
-    fetchSourceArticles(enEndpoint, enApiKey, 'en'),
+    loadCachedArticles('zh', () => fetchSourceArticles(zhEndpoint, zhApiKey, 'zh')),
+    loadCachedArticles('en', () => fetchSourceArticles(enEndpoint, enApiKey, 'en')),
   ]);
 
   const pool = [...zhArticles, ...enArticles];
@@ -182,6 +206,7 @@ export const normalizeSavedNewsEntries = (value: unknown): NewsJournalEntry[] =>
             rating: Number.isFinite(Number(item.rating)) ? Number(item.rating) : 3,
             comment: item.comment ? String(item.comment) : '',
             recordedAt: item.recordedAt ? String(item.recordedAt) : new Date().toISOString(),
+            snapshotId: item.snapshotId ? String(item.snapshotId) : undefined,
           },
         ];
       })

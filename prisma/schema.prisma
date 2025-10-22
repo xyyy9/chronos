@@ -36,3 +36,27 @@ enum PrimaryActivity {
   SOCIAL
   CREATIVE
 }
+
+model NewsCache {
+  id        String   @id @default(uuid())
+  language  String   @unique
+  payload   Json
+  fetchedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NewsSnapshot {
+  id        String   @id @default(uuid())
+  articleId String
+  url       String
+  title     String
+  source    String
+  language  String
+  html      String
+  savedAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([articleId, url])
+}

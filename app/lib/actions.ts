@@ -40,6 +40,7 @@ const newsEntrySchema = z.array(
     rating: z.coerce.number().int().min(1).max(5),
     comment: z.string().max(2000).optional().transform((value) => value ?? ''),
     recordedAt: z.string().min(1),
+    snapshotId: z.string().optional(),
   }),
 );
 

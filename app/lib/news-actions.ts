@@ -87,6 +87,36 @@ export async function saveNewsJournalEntry(
   const log = await ensureDailyLog(logicalDate);
   const existingEntries = Array.isArray(log.newsEntries) ? (log.newsEntries as NewsJournalEntry[]) : [];
 
+  let snapshotId: string | undefined;
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const html = await response.text();
+      const snapshot = await prisma.newsSnapshot.upsert({
+        where: { articleId_url: { articleId, url } },
+        update: {
+          title,
+          source,
+          language,
+          html,
+          savedAt: new Date(),
+        },
+        create: {
+          articleId,
+          url,
+          title,
+          source,
+          language,
+          html,
+        },
+      });
+      snapshotId = snapshot.id;
+    }
+  } catch (error) {
+    console.error('news-snapshot-error', error);
+  }
+
+  const previousEntry = existingEntries.find((entry) => entry.id === articleId);
   const updatedEntry: NewsJournalEntry = {
     id: articleId,
     title,
@@ -97,6 +127,7 @@ export async function saveNewsJournalEntry(
     rating,
     comment: comment ?? '',
     recordedAt: new Date().toISOString(),
+    snapshotId: snapshotId ?? previousEntry?.snapshotId,
   };
 
   const nextEntries = [
