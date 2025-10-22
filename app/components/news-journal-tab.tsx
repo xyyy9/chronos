@@ -290,6 +290,11 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
                 </div>
               );
             })}
+            <div className="flex justify-end pt-2">
+              <Button type="button" variant="outline" onClick={handleRefresh} disabled={!canRefresh}>
+                {copy.refresh}
+              </Button>
+            </div>
           </div>
         )}
       </div>

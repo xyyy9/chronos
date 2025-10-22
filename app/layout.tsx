@@ -63,8 +63,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
         <ServiceWorkerRegister />
-        <main className="min-h-screen pb-20">{children}</main>
-        <TabBar />
+        <div className="flex min-h-screen flex-col">
+          <TabBar />
+          <main className="flex-1">{children}</main>
+        </div>
       </body>
     </html>
   );

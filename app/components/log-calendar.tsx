@@ -57,18 +57,18 @@ export function LogCalendar({
   };
 
   return (
-    <section className="rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-      <header className="mb-4 flex items-center justify-between">
+    <section className="rounded-xl border border-[color:var(--border)]/80 bg-[var(--surface)]/80 p-3 shadow-sm">
+      <header className="mb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{monthLabel}</h2>
-          <p className="text-xs text-[var(--muted-foreground)]">{legend}</p>
+          <h2 className="text-base font-semibold">{monthLabel}</h2>
+          <p className="text-[11px] text-[var(--muted-foreground)]">{legend}</p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onMonthChange(-1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--interactive)] text-sm text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--interactive)] text-xs text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
             aria-label={prevMonthLabel}
           >
             ‹
@@ -76,7 +76,7 @@ export function LogCalendar({
           <button
             type="button"
             onClick={() => onMonthChange(1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--interactive)] text-sm text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--interactive)] text-xs text-[var(--interactive)] transition hover:bg-[var(--interactive)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
             aria-label={nextMonthLabel}
           >
             ›
@@ -84,17 +84,17 @@ export function LogCalendar({
         </div>
       </header>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-[var(--muted-foreground)]">
+      <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-[var(--muted-foreground)]">
         {weekdayLabels.map((label) => (
-          <div key={label} className="py-2">
+          <div key={label} className="py-1.5">
             {label}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-sm">
+      <div className="grid grid-cols-7 gap-1 text-xs">
         {Array.from({ length: leadingBlankDays }).map((_, index) => (
-          <div key={`blank-${index}`} className="h-10" />
+          <div key={`blank-${index}`} className="h-9" />
         ))}
 
         {Array.from({ length: daysInMonth }).map((_, index) => {
@@ -111,7 +111,7 @@ export function LogCalendar({
               type="button"
               onClick={() => handleDayClick(day)}
               className={cn(
-                'flex h-10 w-full items-center justify-center rounded-md border text-sm transition',
+                'flex h-9 w-full items-center justify-center rounded-md border text-xs transition',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--selected-bg)]',
                 isSelected
                   ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'

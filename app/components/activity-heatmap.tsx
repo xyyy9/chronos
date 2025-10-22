@@ -473,7 +473,7 @@ export function ActivityHeatmap({
             className={cn(
               'flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition',
               category.active
-                ? 'border-[#70b2b2] bg-white text-[var(--foreground)]'
+                ? 'border-[var(--selected-bg)] bg-[var(--selected-bg)] text-[var(--selected-foreground)] shadow-sm'
                 : 'border-[color:var(--border)] bg-[var(--surface-raised)] text-[var(--muted-foreground)]',
             )}
           >

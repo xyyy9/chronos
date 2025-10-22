@@ -613,10 +613,10 @@ export function LoggingTab({
   );
 
   return (
-    <div className="pb-32 text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
-        <section className="rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+    <div className="pt-4 pb-24 text-[var(--foreground)]">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6">
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="flex w-full items-center justify-center gap-4">
             <button
               type="button"
               onClick={() => handleShiftDay(-1)}
@@ -628,7 +628,7 @@ export function LoggingTab({
             <button
               type="button"
               onClick={() => setIsCalendarOpen((prev) => !prev)}
-              className="flex flex-1 items-center justify-center rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] px-4 py-3 text-center transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
+              className="flex min-w-[12rem] items-center justify-center rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] px-4 py-3 text-center transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
               aria-label={t.dateButtonAria}
             >
               <span className="text-lg font-semibold text-[var(--foreground)]">
@@ -646,7 +646,7 @@ export function LoggingTab({
             </button>
           </div>
           {isCalendarOpen && (
-            <div className="mt-4">
+            <div className="w-full max-w-md">
               <LogCalendar
                 currentMonth={currentMonth}
                 selectedDate={selectedDate}
@@ -661,7 +661,7 @@ export function LoggingTab({
               />
             </div>
           )}
-        </section>
+        </div>
 
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">{t.title}</h1>
@@ -958,9 +958,10 @@ export function LoggingTab({
                 )}
               </section>
 
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending} className="mb-6">
                 {isPending ? t.saving : t.save}
               </Button>
+              
             </form>
           </>
         )}
