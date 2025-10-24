@@ -105,12 +105,49 @@ const normalizeArticles = (articles: ExternalArticle[], language: 'zh' | 'en'): 
     .filter(Boolean) as NewsArticle[];
 };
 
+const toEndpointList = (endpoint: string | undefined): string[] => {
+  if (!endpoint) {
+    return [];
+  }
+
+  const trimmed = endpoint.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    } catch (error) {
+      console.warn('news-endpoint-parse-warning:', error);
+    }
+  }
+
+  return trimmed
+    .split(/\s*\|\s*|\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 const fetchSourceArticles = async (
-  endpoint: string | undefined,
+  endpoint: string | string[] | undefined,
   apiKey: string | undefined,
   language: 'zh' | 'en',
 ): Promise<NewsArticle[]> => {
-  if (!endpoint) {
+  const endpoints = Array.isArray(endpoint)
+    ? endpoint
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : toEndpointList(endpoint);
+
+  if (endpoints.length === 0) {
     const fallbackPool = language === 'zh' ? FALLBACK_ZH : FALLBACK_EN;
     return fallbackPool.map((item) => ({
       ...item,
@@ -124,13 +161,25 @@ const fetchSourceArticles = async (
       headers['Authorization'] = apiKey;
       headers['X-Api-Key'] = apiKey;
     }
-    const response = await fetch(endpoint, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch news from ${endpoint}`);
+    const articles: NewsArticle[] = [];
+    for (const url of endpoints) {
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch news from ${url}`);
+        }
+        const data = (await response.json()) as { articles?: ExternalArticle[]; data?: ExternalArticle[] };
+        const payload = data.articles ?? data.data ?? [];
+        articles.push(...normalizeArticles(payload, language));
+      } catch (error) {
+        console.error(`news-fetch-error (${language}):`, error);
+      }
     }
-    const data = (await response.json()) as { articles?: ExternalArticle[]; data?: ExternalArticle[] };
-    const articles = data.articles ?? data.data ?? [];
-    return normalizeArticles(articles, language);
+
+    if (articles.length > 0) {
+      return articles;
+    }
+    throw new Error(`No articles retrieved for language ${language}`);
   } catch (error) {
     console.error(`news-fetch-error (${language}):`, error);
     const fallbackPool = language === 'zh' ? FALLBACK_ZH : FALLBACK_EN;
@@ -164,12 +213,12 @@ const loadCachedArticles = async (
 };
 
 export async function fetchDailyNews(): Promise<NewsArticle[]> {
-  const [zhArticles, enArticles] = await Promise.all([
-    loadCachedArticles('zh', () => fetchSourceArticles(zhEndpoint, zhApiKey, 'zh')),
+  const [enArticles, zhArticles] = await Promise.all([
     loadCachedArticles('en', () => fetchSourceArticles(enEndpoint, enApiKey, 'en')),
+    loadCachedArticles('zh', () => fetchSourceArticles(zhEndpoint, zhApiKey, 'zh')),
   ]);
 
-  const pool = [...zhArticles, ...enArticles];
+  const pool = [...enArticles, ...zhArticles];
   const seen = new Set<string>();
 
   return pool.filter((article) => {
