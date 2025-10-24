@@ -27,6 +27,7 @@ type ActivityHeatmapProps = {
   timelineDateKeys?: string[];
   enableDetailPanel?: boolean;
   detailLocale?: string;
+  locale?: 'zh' | 'en';
 };
 
 type SelectedCell = {
@@ -70,7 +71,12 @@ export function ActivityHeatmap({
   timelineDateKeys,
   enableDetailPanel = false,
   detailLocale,
+  locale = 'zh',
 }: ActivityHeatmapProps) {
+  const isZh = locale === 'zh';
+  const weekdayLabels = isZh
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const normalizedCategories = React.useMemo(
     () =>
       categories.map((category, index) => ({
@@ -292,22 +298,6 @@ export function ActivityHeatmap({
     active: activeFilters.size === 0 || activeFilters.has(category.value),
   }));
 
-  const monthLabels: Array<{ weekIndex: number; label: string }> = [];
-  weeks.forEach((week, index) => {
-    if (!week.length) return;
-    const month = week[0].date.getMonth();
-    const year = week[0].date.getFullYear();
-    if (
-      !monthLabels.some((entry) => entry.label === `${year}-${month}`) &&
-      week.some((day) => day.date.getDate() <= 7)
-    ) {
-      monthLabels.push({
-        weekIndex: index,
-        label: `${month + 1}月`,
-      });
-    }
-  });
-
   return (
     <section className="rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-sm">
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -320,21 +310,14 @@ export function ActivityHeatmap({
       <div className="overflow-x-auto overflow-y-visible">
         <div className="flex gap-2">
           <div className="flex flex-col items-end gap-1 pr-2 text-[10px] text-[var(--muted-foreground)]">
-            {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
-              <span key={day} className="h-4 leading-4">
+            {weekdayLabels.map((day, index) => (
+              <span key={`${day}-${index}`} className="h-4 leading-4">
                 {day}
               </span>
             ))}
           </div>
 
           <div className="relative">
-            <div className="absolute -top-5 left-0 flex gap-8 text-xs text-[var(--muted-foreground)]">
-              {monthLabels.map((label) => (
-                <span key={label.label} style={{ marginLeft: `${label.weekIndex * 16}px` }}>
-                  {label.label}
-                </span>
-              ))}
-            </div>
             <div className="flex gap-1">
             {weeks.map((week, weekIndex) => (
               <div key={`week-${weekIndex}`} className="grid grid-rows-7 gap-1">

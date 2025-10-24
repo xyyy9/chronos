@@ -9,6 +9,7 @@ import type { NewsJournalEntry } from '@/app/lib/news';
 
 import { prisma } from './prisma';
 import { getCurrentLogicalDateKey } from './date-utils';
+import { getCurrentUser } from './auth';
 
 const PrimaryActivityEnum = z.enum(['WORK', 'STUDY', 'FITNESS', 'REST', 'SOCIAL', 'CREATIVE']);
 const MentalWorldEnum = z.enum(MENTAL_WORLD_VALUES);
@@ -183,6 +184,15 @@ export async function upsertDailyLog(
 ): Promise<UpsertDailyLogState> {
   'use server';
 
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      status: 'error',
+      message: '请先登录后再保存记录。',
+      errors: { form: '需要登录才能保存。' },
+    };
+  }
+
   const parseResult = DailyLogSchema.safeParse({
     mood: formData.get('mood'),
     sleepQuality: formData.get('sleepQuality'),
@@ -237,9 +247,15 @@ export async function upsertDailyLog(
   const logicalDateKey = logicalDateInput ?? getCurrentLogicalDateKey();
 
   await prisma.dailyLog.upsert({
-    where: { logicalDate: logicalDateKey },
+    where: {
+      userId_logicalDate: {
+        userId: user.id,
+        logicalDate: logicalDateKey,
+      },
+    },
     create: {
       logicalDate: logicalDateKey,
+      userId: user.id,
       mood,
       sleepQuality,
       energyLevel,

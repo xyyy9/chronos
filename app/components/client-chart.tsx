@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import { Pie, PieChart, Tooltip, Cell } from 'recharts';
 
 export type MetricLog = {
   logicalDate: string;
@@ -133,33 +133,33 @@ export function ClientChart({ data, locale }: ClientChartProps) {
             }`}
           >
             <div className="flex shrink-0 items-center justify-center">
-              <div className="h-24 w-24 shrink-0 sm:h-28 sm:w-28">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={metric.chartData}
-                      dataKey="count"
-                      nameKey="score"
-                      innerRadius="45%"
-                      outerRadius="80%"
-                      paddingAngle={2}
-                    >
-                      {metric.chartData.map((entry) => (
-                        <Cell
-                          key={`${metric.key}-${entry.score}`}
-                          fill={SCORE_COLORS[entry.score - 1]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        `${value} 次 (${((value as number) / metric.total * 100).toFixed(1)}%)`,
-                        `${name} 分`,
-                      ]}
+              <PieChart width={isWide ? 112 : 96} height={isWide ? 112 : 96}>
+                <Pie
+                  data={metric.chartData}
+                  dataKey="count"
+                  nameKey="score"
+                  innerRadius="45%"
+                  outerRadius="80%"
+                  paddingAngle={2}
+                >
+                  {metric.chartData.map((entry) => (
+                    <Cell
+                      key={`${metric.key}-${entry.score}`}
+                      fill={SCORE_COLORS[entry.score - 1]}
                     />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    const count = Number(value) || 0;
+                    const score = Number(name);
+                    const label = SCORE_LABELS[score] ?? name;
+                    const entryLabel = isZh ? '次' : 'entries';
+                    const percent = ((count / metric.total) * 100).toFixed(1);
+                    return [`${count} ${entryLabel} (${percent}%)`, label];
+                  }}
+                />
+              </PieChart>
             </div>
 
             <div className="flex flex-1 flex-col justify-between">

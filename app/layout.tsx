@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
 import './globals.css';
 import { TabBar } from '@/app/components/tab-bar';
 import { ServiceWorkerRegister } from '@/app/components/service-worker-register';
+import { getCurrentUser } from '@/app/lib/auth';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,7 +21,6 @@ export const metadata: Metadata = {
   description: 'Track and visualize your daily wellbeing trends.',
   applicationName: 'Chronos',
   manifest: '/manifest.json',
-  themeColor: '#ffffff',
   appleWebApp: {
     capable: true,
     title: 'Chronos',
@@ -52,11 +52,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export const viewport: Viewport = {
+  themeColor: '#ffffff',
+};
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const currentUser = await getCurrentUser();
+
   return (
     <html lang="en" className="bg-white text-black">
       <body
@@ -64,7 +70,7 @@ export default function RootLayout({
       >
         <ServiceWorkerRegister />
         <div className="flex min-h-screen flex-col">
-          <TabBar />
+          <TabBar currentUser={currentUser} />
           <main className="flex-1">{children}</main>
         </div>
       </body>

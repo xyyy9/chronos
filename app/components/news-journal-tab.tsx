@@ -13,6 +13,7 @@ type NewsJournalTabProps = {
   articles: NewsArticle[];
   logicalDate: string;
   initialEntries: NewsJournalEntry[];
+  isDemo?: boolean;
 };
 
 type DraftState = {
@@ -28,6 +29,7 @@ const COPY = {
     heading: '今日新闻评论',
     subtitle: '从中英文头条里挑选你感兴趣的新闻，为它们打分并写下你的看法。',
     refresh: '换一批',
+    demoBanner: '当前展示示例新闻。注册或登录即可保存自己的评论。',
     pending: '保存中…',
     success: '已保存到今日记录。',
     error: '保存失败，请稍后重试。',
@@ -45,6 +47,7 @@ const COPY = {
     subtitle:
       'Browse today’s headlines in Chinese and English, rate how they make you feel, and jot down your thoughts.',
     refresh: 'Refresh',
+    demoBanner: 'You are viewing demo journal entries. Sign up or log in to save your own notes.',
     pending: 'Saving…',
     success: 'Saved to today’s journal.',
     error: 'Save failed, please try again later.',
@@ -59,7 +62,7 @@ const COPY = {
   },
 } as const;
 
-export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJournalTabProps) {
+export function NewsJournalTab({ articles, logicalDate, initialEntries, isDemo = false }: NewsJournalTabProps) {
   const [locale] = useLocale();
   const isZh = locale === 'zh';
   const copy = isZh ? COPY.zh : COPY.en;
@@ -140,7 +143,11 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
     });
   };
 
-  const renderRatingButtons = (articleId: string, currentRating: number | null) => (
+  const renderRatingButtons = (
+    articleId: string,
+    currentRating: number | null,
+    disabled = false,
+  ) => (
     <div className="flex flex-wrap gap-2">
       {[1, 2, 3, 4, 5].map((score) => {
         const isSelected = currentRating === score;
@@ -154,6 +161,7 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
                 : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-hover)]'
             }`}
             onClick={() => updateDraft(articleId, { rating: score })}
+            disabled={disabled}
           >
             {score}
           </button>
@@ -183,6 +191,12 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
             )}
           </div>
         </header>
+
+        {isDemo && (
+          <p className="rounded-xl border border-dashed border-[color:var(--border)] bg-[var(--surface)] px-4 py-3 text-xs text-[var(--muted-foreground)]">
+            {copy.demoBanner}
+          </p>
+        )}
 
         {visibleArticles.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[color:var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--muted-foreground)]">
@@ -242,7 +256,13 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
                   {isExpanded && (
                     <form
                       action={formAction}
-                      onSubmit={() => setPendingArticleId(article.id)}
+                      onSubmit={(event) => {
+                        if (isDemo) {
+                          event.preventDefault();
+                          return;
+                        }
+                        setPendingArticleId(article.id);
+                      }}
                       className="mt-4 flex flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] p-4"
                     >
                       <input type="hidden" name="logicalDate" value={logicalDate} />
@@ -256,7 +276,9 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
 
                       <div className="flex flex-col gap-2">
                         <span className="text-sm font-medium text-[var(--foreground)]">{copy.ratingLabel}</span>
-                        {renderRatingButtons(article.id, rating)}
+                        <div className={isDemo ? 'pointer-events-none opacity-60' : undefined}>
+                          {renderRatingButtons(article.id, rating, isDemo)}
+                        </div>
                       </div>
 
                       <div className="flex flex-col gap-2">
@@ -273,6 +295,7 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
                           onChange={(event) => updateDraft(article.id, { comment: event.target.value })}
                           rows={4}
                           className="w-full resize-y rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--interactive)]"
+                          disabled={isDemo || (isPending && pendingArticleId === article.id)}
                           placeholder={copy.commentPlaceholder}
                         />
                       </div>
@@ -280,7 +303,11 @@ export function NewsJournalTab({ articles, logicalDate, initialEntries }: NewsJo
                       <div className="flex items-center justify-end gap-3">
                         <Button
                           type="submit"
-                          disabled={rating == null || (isPending && pendingArticleId === article.id)}
+                          disabled={
+                            isDemo ||
+                            rating == null ||
+                            (isPending && pendingArticleId === article.id)
+                          }
                         >
                           {copy.saveButton}
                         </Button>

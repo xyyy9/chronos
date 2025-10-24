@@ -1,19 +1,28 @@
 import { NextResponse } from 'next/server';
 
 import { prisma } from '@/app/lib/prisma';
+import { getCurrentUser } from '@/app/lib/auth';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ dates: [] }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const monthParam = searchParams.get('month');
 
-  const referenceKey = monthParam && /^\d{4}-\d{2}$/.test(monthParam)
-    ? monthParam
-    : getCurrentLogicalDateKey().slice(0, 7);
+  const referenceKey =
+    monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+      ? monthParam
+      : getCurrentLogicalDateKey().slice(0, 7);
+
   const [yearStr, monthStr] = referenceKey.split('-');
   const year = Number(yearStr);
   const month = Number(monthStr);
   const hasValidMonth = !Number.isNaN(year) && !Number.isNaN(month);
+
   const startKey = `${referenceKey}-01`;
   const nextMonth = hasValidMonth ? (month === 12 ? 1 : month + 1) : 12;
   const nextYear = hasValidMonth ? (month === 12 ? year + 1 : year) : year || 1970;
@@ -21,6 +30,7 @@ export async function GET(request: Request) {
 
   const logs = await prisma.dailyLog.findMany({
     where: {
+      userId: user.id,
       logicalDate: {
         gte: startKey,
         lt: endKey,
@@ -35,8 +45,5 @@ export async function GET(request: Request) {
   });
 
   const dates = logs.map((entry) => entry.logicalDate);
-
-  return NextResponse.json({
-    dates,
-  });
+  return NextResponse.json({ dates });
 }

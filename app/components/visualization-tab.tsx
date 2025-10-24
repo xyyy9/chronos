@@ -21,9 +21,10 @@ type VisualizationLog = {
 
 type VisualizationTabProps = {
   logs: VisualizationLog[];
+  isDemo?: boolean;
 };
 
-export function VisualizationTab({ logs }: VisualizationTabProps) {
+export function VisualizationTab({ logs, isDemo = false }: VisualizationTabProps) {
   const [locale] = useLocale();
   const isZh = locale === 'zh';
 
@@ -92,6 +93,14 @@ export function VisualizationTab({ logs }: VisualizationTabProps) {
           <p className="text-sm text-[var(--muted-foreground)]">{copy.subheading}</p>
         </header>
 
+        {isDemo && (
+          <p className="rounded-xl border border-dashed border-[color:var(--border)] bg-[var(--surface)] px-4 py-3 text-xs text-[var(--muted-foreground)]">
+            {isZh
+              ? '当前展示示例数据。注册或登录即可同步和查看你自己的记录。'
+              : 'You are viewing demo data. Sign up or log in to save your own logs.'}
+          </p>
+        )}
+
         <ClientChart data={metricData} locale={locale} />
 
         <ActivityHeatmap
@@ -104,6 +113,7 @@ export function VisualizationTab({ logs }: VisualizationTabProps) {
           }))}
           occurrences={primaryOccurrences}
           timelineDateKeys={dateKeys}
+          locale={locale}
         />
 
         <ActivityHeatmap
@@ -118,6 +128,7 @@ export function VisualizationTab({ logs }: VisualizationTabProps) {
           timelineDateKeys={dateKeys}
           enableDetailPanel
           detailLocale={isZh ? 'zh-CN' : 'en-US'}
+          locale={locale}
         />
 
         <ActivityHeatmap
@@ -130,6 +141,7 @@ export function VisualizationTab({ logs }: VisualizationTabProps) {
           }))}
           occurrences={dailyOccurrences}
           timelineDateKeys={dateKeys}
+          locale={locale}
         />
       </div>
     </div>

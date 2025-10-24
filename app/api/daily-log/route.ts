@@ -3,15 +3,26 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 import type { NewsJournalEntry } from '@/app/lib/news';
+import { getCurrentUser } from '@/app/lib/auth';
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ log: null }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date');
   const logicalDateKey =
     dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getCurrentLogicalDateKey();
 
   const log = await prisma.dailyLog.findUnique({
-    where: { logicalDate: logicalDateKey },
+    where: {
+      userId_logicalDate: {
+        userId: user.id,
+        logicalDate: logicalDateKey,
+      },
+    },
   });
 
   const mentalWorldActivities =

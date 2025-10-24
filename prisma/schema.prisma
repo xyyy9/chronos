@@ -15,7 +15,7 @@ datasource db {
 
 model DailyLog {
   id                    String            @id @default(uuid())
-  logicalDate           String            @unique
+  logicalDate           String
   mood                  Int
   sleepQuality          Int
   energyLevel           Int               @default(3)
@@ -26,6 +26,11 @@ model DailyLog {
   notes                 String?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+  userId                String?
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, logicalDate])
+  @@index([userId])
 }
 
 enum PrimaryActivity {
@@ -59,4 +64,24 @@ model NewsSnapshot {
   updatedAt DateTime @updatedAt
 
   @@unique([articleId, url])
+}
+
+model User {
+  id           String     @id @default(uuid())
+  username     String
+  email        String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  logs         DailyLog[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }

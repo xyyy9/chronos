@@ -1,0 +1,2 @@
+-- Manual baseline applied outside Prisma Migrate.
+-- See prisma/manual-baseline.sql for the SQL that was executed.

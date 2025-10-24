@@ -1,7 +1,9 @@
 import { LoggingTab } from '@/app/components/logging-tab';
-import { prisma } from '@/app/lib/prisma';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 import { normalizeSavedNewsEntries } from '@/app/lib/news';
+import { prisma } from '@/app/lib/prisma';
+import { getCurrentUser } from '@/app/lib/auth';
+import { generateDemoMonth } from '@/app/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +50,7 @@ const parseDailyLife = (value: unknown) =>
     : [];
 
 export default async function Home() {
+  const user = await getCurrentUser();
   const selectedDateKey = getCurrentLogicalDateKey();
   const [yearStr, monthStr] = selectedDateKey.split('-');
   const year = Number(yearStr);
@@ -61,8 +64,53 @@ export default async function Home() {
     ? `${String(nextYear).padStart(4, '0')}-${String(nextMonth).padStart(2, '0')}-01`
     : `${selectedDateKey.slice(0, 7)}-99`;
 
+  if (!user) {
+    const demo = generateDemoMonth(selectedDateKey);
+    const initialLog = demo.initialLog
+      ? {
+          dateKey: demo.initialLog.logicalDate,
+          mood: demo.initialLog.mood,
+          sleepQuality: demo.initialLog.sleepQuality,
+          energyLevel: demo.initialLog.energyLevel,
+          primaryActivities: demo.initialLog.primaryActivities,
+          mentalWorldActivities: demo.initialLog.mentalWorldActivities,
+          dailyLifeActivities: demo.initialLog.dailyLifeActivities,
+          newsEntries: demo.initialLog.newsEntries,
+          notes: demo.initialLog.notes,
+        }
+      : null;
+
+    const demoLogs = Object.fromEntries(
+      demo.logs.map((log) => [
+        log.logicalDate,
+        {
+          dateKey: log.logicalDate,
+          mood: log.mood,
+          sleepQuality: log.sleepQuality,
+          energyLevel: log.energyLevel,
+          primaryActivities: log.primaryActivities,
+          mentalWorldActivities: log.mentalWorldActivities,
+          dailyLifeActivities: log.dailyLifeActivities,
+          newsEntries: log.newsEntries,
+          notes: log.notes,
+        },
+      ]),
+    );
+
+    return (
+      <LoggingTab
+        initialLog={initialLog}
+        initialLoggedDates={demo.loggedDates}
+        initialSelectedDate={demo.selectedDate}
+        isDemo
+        demoLogs={demoLogs}
+      />
+    );
+  }
+
   const monthLogs = await prisma.dailyLog.findMany({
     where: {
+      userId: user.id,
       logicalDate: {
         gte: startKey,
         lt: endKey,

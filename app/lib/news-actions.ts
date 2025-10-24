@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { NewsJournalEntry } from '@/app/lib/news';
 import { getCurrentLogicalDateKey } from '@/app/lib/date-utils';
 import { prisma } from '@/app/lib/prisma';
+import { getCurrentUser } from '@/app/lib/auth';
 
 const newsJournalInputSchema = z.object({
   logicalDate: z
@@ -29,14 +30,22 @@ export type SaveNewsJournalState = {
   entries?: NewsJournalEntry[];
 };
 
-const ensureDailyLog = async (logicalDate: string) => {
-  const existing = await prisma.dailyLog.findUnique({ where: { logicalDate } });
+const ensureDailyLog = async (logicalDate: string, userId: string) => {
+  const existing = await prisma.dailyLog.findUnique({
+    where: {
+      userId_logicalDate: {
+        userId,
+        logicalDate,
+      },
+    },
+  });
   if (existing) {
     return existing;
   }
   return prisma.dailyLog.create({
     data: {
       logicalDate,
+      userId,
       mood: 3,
       sleepQuality: 3,
       energyLevel: 3,
@@ -52,6 +61,14 @@ export async function saveNewsJournalEntry(
   _prevState: SaveNewsJournalState,
   formData: FormData,
 ): Promise<SaveNewsJournalState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      status: 'error',
+      message: '请登录后再保存新闻评论。',
+    };
+  }
+
   const parseResult = newsJournalInputSchema.safeParse({
     logicalDate: formData.get('logicalDate'),
     articleId: formData.get('articleId'),
@@ -84,7 +101,7 @@ export async function saveNewsJournalEntry(
   } = parseResult.data;
 
   const logicalDate = logicalDateInput ?? getCurrentLogicalDateKey();
-  const log = await ensureDailyLog(logicalDate);
+  const log = await ensureDailyLog(logicalDate, user.id);
   const existingEntries = Array.isArray(log.newsEntries) ? (log.newsEntries as NewsJournalEntry[]) : [];
 
   let snapshotId: string | undefined;
@@ -136,7 +153,12 @@ export async function saveNewsJournalEntry(
   ];
 
   await prisma.dailyLog.update({
-    where: { logicalDate },
+    where: {
+      userId_logicalDate: {
+        userId: user.id,
+        logicalDate,
+      },
+    },
     data: {
       newsEntries: nextEntries,
       // keep other fields unchanged

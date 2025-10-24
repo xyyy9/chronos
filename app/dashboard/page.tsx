@@ -1,6 +1,8 @@
 import { VisualizationTab } from '@/app/components/visualization-tab';
 import { prisma } from '@/app/lib/prisma';
 import { formatDateKey } from '@/app/lib/date-utils';
+import { getCurrentUser } from '@/app/lib/auth';
+import { generateDemoMonth } from '@/app/lib/demo-data';
 
 type DashboardLog = {
   logicalDate: string;
@@ -16,7 +18,26 @@ type DashboardLog = {
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    const demo = generateDemoMonth();
+    const data: DashboardLog[] = demo.logs.map((log) => ({
+      logicalDate: log.logicalDate,
+      mood: log.mood,
+      sleepQuality: log.sleepQuality,
+      energyLevel: log.energyLevel,
+      primaryActivities: log.primaryActivities,
+      mentalWorldActivities: log.mentalWorldActivities,
+      dailyLifeActivities: log.dailyLifeActivities,
+      notes: log.notes,
+    }));
+
+    return <VisualizationTab logs={data} isDemo />;
+  }
+
   const logs = await prisma.dailyLog.findMany({
+    where: { userId: user.id },
     orderBy: { logicalDate: 'asc' },
   });
 

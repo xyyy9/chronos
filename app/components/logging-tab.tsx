@@ -167,6 +167,8 @@ type LoggingTabProps = {
   initialLog?: InitialLogSnapshot | null;
   initialLoggedDates?: string[];
   initialSelectedDate?: string;
+  isDemo?: boolean;
+  demoLogs?: Record<string, InitialLogSnapshot>;
 };
 
 const INITIAL_ACTION_STATE: UpsertDailyLogState = {
@@ -262,6 +264,8 @@ export function LoggingTab({
   initialLog = null,
   initialLoggedDates = [],
   initialSelectedDate,
+  isDemo = false,
+  demoLogs,
 }: LoggingTabProps) {
   const [locale, setLocale] = useLocale();
   const t = TRANSLATIONS[locale];
@@ -293,7 +297,14 @@ export function LoggingTab({
     return dates;
   });
 
-  const [isLoading, setIsLoading] = React.useState(!initialLog);
+  const demoLogMap = React.useMemo(() => {
+    if (!demoLogs) {
+      return new Map<string, InitialLogSnapshot>();
+    }
+    return new Map<string, InitialLogSnapshot>(Object.entries(demoLogs));
+  }, [demoLogs]);
+
+  const [isLoading, setIsLoading] = React.useState(isDemo ? false : !initialLog);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
@@ -316,8 +327,13 @@ export function LoggingTab({
   const [primaryState, setPrimaryState] = React.useState<PrimaryActivityState>(() =>
     initialLog ? hydratePrimaryState(initialLog.primaryActivities) : createDefaultPrimaryState(),
   );
+  const [hasAnyLog, setHasAnyLog] = React.useState<boolean>(
+    initialLoggedDates.length > 0 || Boolean(initialLog),
+  );
 
   const skipInitialFetchRef = React.useRef(Boolean(initialLog));
+  const lastFetchedDateRef = React.useRef<string | null>(null);
+  const calendarCacheRef = React.useRef<Map<string, Set<string>>>(new Map());
 
   const [actionState, formAction, isPending] = useActionState(
     upsertDailyLog,
@@ -354,6 +370,19 @@ export function LoggingTab({
     JSON.stringify(initialLog?.newsEntries ?? []),
   );
 
+  const initialLoggedDatesKey = React.useMemo(() => initialLoggedDates.join('|'), [initialLoggedDates]);
+  const initialLogDateKey = initialLog?.dateKey ?? null;
+
+  React.useEffect(() => {
+    const baseDates = new Set(initialLoggedDates);
+    if (initialLogDateKey) {
+      baseDates.add(initialLogDateKey);
+    }
+    setLoggedDates(baseDates);
+    setHasAnyLog(baseDates.size > 0);
+    calendarCacheRef.current.clear();
+  }, [initialLoggedDates, initialLoggedDatesKey, initialLogDateKey, isDemo]);
+
   const resetForm = React.useCallback(() => {
     setFormValues(createInitialFormValues());
     setMentalState(createDefaultMentalState());
@@ -367,30 +396,82 @@ export function LoggingTab({
     [currentMonth],
   );
 
-  const loadCalendar = React.useCallback(async () => {
-    try {
-      const response = await fetch(`/api/daily-log/calendar?month=${monthKey}`, {
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        throw new Error('加载日历数据失败');
+  const loadCalendar = React.useCallback(
+    async (targetMonthKey: string = monthKey) => {
+      if (!hasAnyLog) {
+        setLoggedDates(new Set(initialLoggedDates));
+        return;
       }
 
-      const data = (await response.json()) as { dates: string[] };
-      setLoggedDates(() => {
-        const next = new Set(data.dates);
-        next.add(selectedDate);
-        return next;
-      });
-    } catch (error) {
-      console.error(error);
-      setLoggedDates(new Set());
-    }
-  }, [monthKey, selectedDate]);
+      if (isDemo) {
+        setLoggedDates(new Set(demoLogMap.keys()));
+        return;
+      }
+
+      const cached = calendarCacheRef.current.get(targetMonthKey);
+      if (cached) {
+        setLoggedDates((prev) => {
+          const next = new Set(prev);
+          cached.forEach((date) => next.add(date));
+          return next;
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/daily-log/calendar?month=${targetMonthKey}`, {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('加载日历数据失败');
+        }
+
+        const data = (await response.json()) as { dates: string[] };
+        const monthDates = new Set(data.dates);
+        calendarCacheRef.current.set(targetMonthKey, monthDates);
+        setLoggedDates((prev) => {
+          const next = new Set(prev);
+          monthDates.forEach((date) => next.add(date));
+          return next;
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    [demoLogMap, hasAnyLog, initialLoggedDates, isDemo, monthKey],
+  );
 
   const loadDailyLog = React.useCallback(
     async (dateKey: string) => {
+      if (isDemo) {
+        const entry = demoLogMap.get(dateKey);
+        setFetchError(null);
+        setIsLoading(false);
+
+        if (entry) {
+          setFormValues({
+            mood: entry.mood.toString(),
+            sleepQuality: entry.sleepQuality.toString(),
+            energyLevel: entry.energyLevel.toString(),
+            notes: entry.notes ?? '',
+          });
+          setMentalState(hydrateMentalState(entry.mentalWorldActivities));
+          setDailyState(hydrateDailyLifeState(entry.dailyLifeActivities));
+          setPrimaryState(hydratePrimaryState(entry.primaryActivities));
+          setNewsEntriesJson(JSON.stringify(entry.newsEntries ?? []));
+        } else {
+          resetForm();
+          setMentalState(hydrateMentalState([]));
+          setDailyState(hydrateDailyLifeState([]));
+          setPrimaryState(hydratePrimaryState([]));
+          setNewsEntriesJson('[]');
+        }
+
+        setLoggedDates(new Set(demoLogMap.keys()));
+        return;
+      }
+
       try {
         setFetchError(null);
         setIsLoading(true);
@@ -420,7 +501,12 @@ export function LoggingTab({
         };
 
         if (data.log) {
+          setHasAnyLog(true);
           const localDateKey = data.log.logicalDate;
+          const monthForLog = localDateKey.slice(0, 7);
+          const monthSet = new Set(calendarCacheRef.current.get(monthForLog) ?? []);
+          monthSet.add(localDateKey);
+          calendarCacheRef.current.set(monthForLog, monthSet);
           setFormValues({
             mood: data.log.mood.toString(),
             sleepQuality: data.log.sleepQuality.toString(),
@@ -456,17 +542,34 @@ export function LoggingTab({
         setIsLoading(false);
       }
     },
-    [resetForm],
+    [demoLogMap, isDemo, resetForm],
   );
 
-  React.useEffect(() => {
-    if (skipInitialFetchRef.current && selectedDate === baseSelectedDate) {
-      skipInitialFetchRef.current = false;
-      setIsLoading(false);
+React.useEffect(() => {
+  if (isDemo) {
+    const demoKey = `demo-${selectedDate}`;
+    if (lastFetchedDateRef.current === demoKey) {
       return;
     }
+    lastFetchedDateRef.current = demoKey;
     loadDailyLog(selectedDate);
-  }, [loadDailyLog, selectedDate, baseSelectedDate]);
+    return;
+  }
+
+  if (skipInitialFetchRef.current && selectedDate === baseSelectedDate) {
+    skipInitialFetchRef.current = false;
+    setIsLoading(false);
+    lastFetchedDateRef.current = null;
+    return;
+  }
+
+  if (lastFetchedDateRef.current === selectedDate) {
+    return;
+  }
+
+  lastFetchedDateRef.current = selectedDate;
+  loadDailyLog(selectedDate);
+}, [baseSelectedDate, isDemo, loadDailyLog, selectedDate]);
 
   React.useEffect(() => {
     if (!actionState?.values) {
@@ -483,6 +586,7 @@ export function LoggingTab({
     setDailyState(hydrateDailyLifeState(actionState.values.dailyLifeActivities));
     setPrimaryState(hydratePrimaryState(actionState.values.primaryActivities));
     setNewsEntriesJson(JSON.stringify(actionState.values.newsEntries ?? []));
+    setHasAnyLog(true);
 
     if (actionState.values.logicalDate) {
       const localKey = actionState.values.logicalDate;
@@ -499,16 +603,15 @@ export function LoggingTab({
   }, [actionState, monthKey]);
 
   const handleMonthChange = (offset: number) => {
-    setCurrentMonth((prev) => {
-      const next = new Date(prev);
-      next.setMonth(next.getMonth() + offset);
-      return next;
-    });
-  };
+    const next = new Date(currentMonth);
+    next.setMonth(next.getMonth() + offset);
+    setCurrentMonth(next);
 
-  React.useEffect(() => {
-    loadCalendar();
-  }, [loadCalendar]);
+    if (isCalendarOpen) {
+      const nextMonthKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+      void loadCalendar(nextMonthKey);
+    }
+  };
 
   React.useEffect(() => {
     const [yearStr, monthStr] = selectedDate.split('-');
@@ -523,12 +626,39 @@ export function LoggingTab({
       currentMonth.getFullYear() !== year ||
       currentMonth.getMonth() !== month
     ) {
-      setCurrentMonth(new Date(year, month, 1));
+      const next = new Date(year, month, 1);
+      setCurrentMonth(next);
     }
   }, [currentMonth, selectedDate]);
 
+  React.useEffect(() => {
+    if (!isCalendarOpen) {
+      return;
+    }
+    const monthKeyForSelected = selectedDate.slice(0, 7);
+    void loadCalendar(monthKeyForSelected);
+  }, [isCalendarOpen, loadCalendar, selectedDate]);
+
+  React.useEffect(() => {
+    if (!hasAnyLog || !isCalendarOpen) {
+      return;
+    }
+    void loadCalendar(monthKey);
+  }, [hasAnyLog, isCalendarOpen, loadCalendar, monthKey]);
+
   const handleSelectDate = (dateKey: string) => {
     setSelectedDate(dateKey);
+  };
+
+  const handleToggleCalendar = () => {
+    setIsCalendarOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        const monthKeyToLoad = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        void loadCalendar(monthKeyToLoad);
+      }
+      return next;
+    });
   };
 
   const handleSelectScale = (key: keyof FormValues, value: string) => {
@@ -627,7 +757,7 @@ export function LoggingTab({
             </button>
             <button
               type="button"
-              onClick={() => setIsCalendarOpen((prev) => !prev)}
+              onClick={handleToggleCalendar}
               className="flex min-w-[12rem] items-center justify-center rounded-xl border border-[color:var(--border)] bg-[var(--surface-raised)] px-4 py-3 text-center transition hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--interactive)]"
               aria-label={t.dateButtonAria}
             >
@@ -675,6 +805,14 @@ export function LoggingTab({
           </Button>
         </div>
         <p className="text-sm text-[var(--muted-foreground)]">{t.subtitle}</p>
+
+        {isDemo && (
+          <p className="rounded-xl border border-dashed border-[color:var(--border)] bg-[var(--surface)] px-4 py-3 text-xs text-[var(--muted-foreground)]">
+            {isZh
+              ? '当前展示示例数据。登录后即可记录与同步你的真实日常。'
+              : 'You are viewing demo data. Sign in to start tracking your own days.'}
+          </p>
+        )}
 
         {isLoading ? (
           <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[var(--surface)] text-sm text-[var(--muted-foreground)]">
@@ -958,8 +1096,12 @@ export function LoggingTab({
                 )}
               </section>
 
-              <Button type="submit" disabled={isPending} className="mb-6">
-                {isPending ? t.saving : t.save}
+              <Button
+                type="submit"
+                disabled={isDemo || isPending}
+                className="mb-6"
+              >
+                {isDemo ? (isZh ? '登录后可保存' : 'Sign in to save') : isPending ? t.saving : t.save}
               </Button>
               
             </form>

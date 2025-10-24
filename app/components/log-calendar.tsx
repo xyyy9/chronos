@@ -32,11 +32,13 @@ export function LogCalendar({
   const isZh = locale === 'zh';
   const weekdayLabels = isZh
     ? ['日', '一', '二', '三', '四', '五', '六']
-    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const monthLabel = new Intl.DateTimeFormat(isZh ? 'zh-CN' : 'en-US', {
-    year: 'numeric',
-    month: 'long',
-  }).format(new Date(year, monthIndex));
+    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const monthLabel = isZh
+    ? `${year}年${monthIndex + 1}月`
+    : new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(year, monthIndex));
   const legend = legendText
     ? legendText
     : isZh
@@ -85,8 +87,8 @@ export function LogCalendar({
       </header>
 
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-[var(--muted-foreground)]">
-        {weekdayLabels.map((label) => (
-          <div key={label} className="py-1.5">
+        {weekdayLabels.map((label, index) => (
+          <div key={`${label}-${index}`} className="py-1.5">
             {label}
           </div>
         ))}
