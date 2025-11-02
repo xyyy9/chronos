@@ -616,20 +616,25 @@ React.useEffect(() => {
   React.useEffect(() => {
     const [yearStr, monthStr] = selectedDate.split('-');
     const year = Number(yearStr);
-    const month = Number(monthStr) - 1;
+    const monthIndex = Number(monthStr) - 1;
 
-    if (Number.isNaN(year) || Number.isNaN(month)) {
+    if (Number.isNaN(year) || Number.isNaN(monthIndex)) {
       return;
     }
 
-    if (
-      currentMonth.getFullYear() !== year ||
-      currentMonth.getMonth() !== month
-    ) {
-      const next = new Date(year, month, 1);
-      setCurrentMonth(next);
-    }
-  }, [currentMonth, selectedDate]);
+    setCurrentMonth((prev) => {
+      if (
+        prev.getFullYear() === year &&
+        prev.getMonth() === monthIndex
+      ) {
+        return prev;
+      }
+
+      const next = new Date(year, monthIndex, 1);
+      next.setHours(0, 0, 0, 0);
+      return next;
+    });
+  }, [selectedDate]);
 
   React.useEffect(() => {
     if (!isCalendarOpen) {
